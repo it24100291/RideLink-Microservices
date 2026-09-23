@@ -22,33 +22,22 @@ public class VehicleService {
     }
 
     public Vehicle createVehicle(Long driverId, Vehicle vehicle) {
-        Driver driver = driverRepository.findById(driverId);
+        Driver driver = driverRepository.findById(driverId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Driver not found"));
 
-        if (driver == null) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Driver not found");
-        }
-
-        vehicle.setDriverId(driverId);
+        vehicle.setDriverId(driver.getId());
         return vehicleRepository.save(vehicle);
     }
 
     public List<Vehicle> getVehiclesByDriverId(Long driverId) {
-        Driver driver = driverRepository.findById(driverId);
+        Driver driver = driverRepository.findById(driverId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Driver not found"));
 
-        if (driver == null) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Driver not found");
-        }
-
-        return vehicleRepository.findByDriverId(driverId);
+        return vehicleRepository.findByDriverId(driver.getId());
     }
 
     public Vehicle getVehicleById(Long vehicleId) {
-        Vehicle vehicle = vehicleRepository.findById(vehicleId);
-
-        if (vehicle == null) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Vehicle not found");
-        }
-
-        return vehicle;
+        return vehicleRepository.findById(vehicleId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Vehicle not found"));
     }
 }
