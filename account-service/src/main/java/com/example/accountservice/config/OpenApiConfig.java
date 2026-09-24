@@ -8,7 +8,7 @@ import org.springframework.context.annotation.Configuration;
 @OpenAPIDefinition(
         info = @Info(
                 title = "RideLink Account Service API",
-                description = "Account registration and service health endpoints for RideLink.",
+                description = "Account registration, login, self-service profile routes, and admin status management for RideLink.",
                 version = "1.0"
         )
 )

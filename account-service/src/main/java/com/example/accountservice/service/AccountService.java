@@ -67,8 +67,20 @@ public class AccountService {
         return AccountResponse.fromEntity(account);
     }
 
-    public AccountProfileResponse getProfileById(Long accountId) {
+    public Account getAccountById(Long accountId) {
+        return findAccountOrThrow(accountId);
+    }
+
+    public Account requireActiveAccount(Long accountId) {
         Account account = findAccountOrThrow(accountId);
+        if (account.getStatus() == AccountStatus.SUSPENDED) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Account is suspended.");
+        }
+        return account;
+    }
+
+    public AccountProfileResponse getProfileById(Long accountId) {
+        Account account = requireActiveAccount(accountId);
         return AccountProfileResponse.fromEntity(account);
     }
 
@@ -79,7 +91,7 @@ public class AccountService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Name is required.");
         }
 
-        Account account = findAccountOrThrow(accountId);
+        Account account = requireActiveAccount(accountId);
         account.setName(trimmedName);
         Account saved = accountRepository.save(account);
         return AccountProfileResponse.fromEntity(saved);
@@ -98,7 +110,7 @@ public class AccountService {
 
     private Account findAccountOrThrow(Long accountId) {
         return accountRepository.findById(accountId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Account not found: " + accountId));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Account not found."));
     }
 
     private ResponseStatusException authenticationFailure() {
