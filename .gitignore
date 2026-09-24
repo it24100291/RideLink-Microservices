@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Compiled class files
 *.class
 
@@ -70,3 +71,21 @@ Desktop.ini
 # Temporary files
 *.tmp
 *.temp
+=======
+# Maven build output
+**/target/
+
+# IntelliJ IDEA
+**/.idea/
+*.iml
+
+# VS Code
+.vscode/
+
+# Environment files
+.env
+*.env
+
+# Log files
+*.log
+>>>>>>> 2b36dd5 (basice merge driver with ride)
