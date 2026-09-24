@@ -1,6 +1,7 @@
 package com.example.accountservice;
 
 import com.example.accountservice.dto.AccountProfileResponse;
+import com.example.accountservice.dto.AccountResponse;
 import com.example.accountservice.model.Account;
 import com.example.accountservice.model.AccountStatus;
 import com.example.accountservice.model.Role;
@@ -108,5 +109,91 @@ class AccountServiceProfileTest {
 
         assertThat(updated.status()).isEqualTo(AccountStatus.SUSPENDED);
         assertThat(accountRepository.findById(account.getId()).orElseThrow().getStatus()).isEqualTo(AccountStatus.SUSPENDED);
+    }
+
+    @Test
+    void verifyCredentials_validCredentials_returnsAccountSummary() {
+        String rawPassword = "StrongPass123";
+        Account account = accountRepository.save(new Account(
+                "Alice Johnson",
+                "alice@example.com",
+                new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder().encode(rawPassword),
+                Role.PASSENGER,
+                AccountStatus.ACTIVE
+        ));
+
+        AccountResponse response = accountService.verifyCredentials("alice@example.com", rawPassword);
+
+        assertThat(response.id()).isEqualTo(account.getId());
+        assertThat(response.name()).isEqualTo("Alice Johnson");
+        assertThat(response.email()).isEqualTo("alice@example.com");
+        assertThat(response.role()).isEqualTo(Role.PASSENGER);
+        assertThat(response.status()).isEqualTo(AccountStatus.ACTIVE);
+    }
+
+    @Test
+    void verifyCredentials_wrongPassword_throwsUnauthorized() {
+        accountRepository.save(new Account(
+                "Alice Johnson",
+                "alice@example.com",
+                new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder().encode("StrongPass123"),
+                Role.PASSENGER,
+                AccountStatus.ACTIVE
+        ));
+
+        assertThatThrownBy(() -> accountService.verifyCredentials("alice@example.com", "WrongPassword!"))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(ex -> {
+                    ResponseStatusException exception = (ResponseStatusException) ex;
+                    assertThat(exception.getStatusCode().value()).isEqualTo(HttpStatus.UNAUTHORIZED.value());
+                    assertThat(exception.getReason()).isEqualTo("Invalid email or password.");
+                });
+    }
+
+    @Test
+    void verifyCredentials_unknownEmail_throwsUnauthorized() {
+        assertThatThrownBy(() -> accountService.verifyCredentials("missing@example.com", "StrongPass123"))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(ex -> {
+                    ResponseStatusException exception = (ResponseStatusException) ex;
+                    assertThat(exception.getStatusCode().value()).isEqualTo(HttpStatus.UNAUTHORIZED.value());
+                    assertThat(exception.getReason()).isEqualTo("Invalid email or password.");
+                });
+    }
+
+    @Test
+    void verifyCredentials_mixedCaseEmail_matchesAccount() {
+        String rawPassword = "StrongPass123";
+        accountRepository.save(new Account(
+                "Alice Johnson",
+                "ALICE@EXAMPLE.COM",
+                new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder().encode(rawPassword),
+                Role.DRIVER,
+                AccountStatus.ACTIVE
+        ));
+
+        AccountResponse response = accountService.verifyCredentials("alice@example.com", rawPassword);
+
+        assertThat(response.email()).isEqualTo("ALICE@EXAMPLE.COM");
+        assertThat(response.role()).isEqualTo(Role.DRIVER);
+    }
+
+    @Test
+    void verifyCredentials_suspendedAccount_throwsUnauthorized() {
+        accountRepository.save(new Account(
+                "Alice Johnson",
+                "alice@example.com",
+                new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder().encode("StrongPass123"),
+                Role.PASSENGER,
+                AccountStatus.SUSPENDED
+        ));
+
+        assertThatThrownBy(() -> accountService.verifyCredentials("alice@example.com", "StrongPass123"))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(ex -> {
+                    ResponseStatusException exception = (ResponseStatusException) ex;
+                    assertThat(exception.getStatusCode().value()).isEqualTo(HttpStatus.UNAUTHORIZED.value());
+                    assertThat(exception.getReason()).isEqualTo("Invalid email or password.");
+                });
     }
 }

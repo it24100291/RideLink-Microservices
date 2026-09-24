@@ -47,6 +47,26 @@ public class AccountService {
         return AccountResponse.fromEntity(saved);
     }
 
+    public AccountResponse verifyCredentials(String email, String password) {
+        String normalizedEmail = email == null ? "" : email.trim().toLowerCase(Locale.ROOT);
+        if (normalizedEmail.isEmpty() || password == null || password.isEmpty()) {
+            throwAuthenticationFailure();
+        }
+
+        Account account = accountRepository.findByEmailIgnoreCase(normalizedEmail)
+                .orElseThrow(this::authenticationFailure);
+
+        if (account.getStatus() == AccountStatus.SUSPENDED) {
+            throwAuthenticationFailure();
+        }
+
+        if (!passwordEncoder.matches(password, account.getPassword())) {
+            throwAuthenticationFailure();
+        }
+
+        return AccountResponse.fromEntity(account);
+    }
+
     public AccountProfileResponse getProfileById(Long accountId) {
         Account account = findAccountOrThrow(accountId);
         return AccountProfileResponse.fromEntity(account);
@@ -79,5 +99,13 @@ public class AccountService {
     private Account findAccountOrThrow(Long accountId) {
         return accountRepository.findById(accountId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Account not found: " + accountId));
+    }
+
+    private ResponseStatusException authenticationFailure() {
+        return new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid email or password.");
+    }
+
+    private void throwAuthenticationFailure() {
+        throw authenticationFailure();
     }
 }
