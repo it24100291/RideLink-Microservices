@@ -33,4 +33,15 @@ public class DriverRepository {
                 .findFirst()
                 .orElse(null);
     }
+
+    public Driver findByLicenseNumber(String licenseNumber) {
+        if (licenseNumber == null) {
+            return null;
+        }
+        return drivers.stream()
+                .filter(driver -> driver.getLicenseNumber() != null
+                        && driver.getLicenseNumber().trim().equalsIgnoreCase(licenseNumber.trim()))
+                .findFirst()
+                .orElse(null);
+    }
 }
