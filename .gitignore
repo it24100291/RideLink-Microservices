@@ -1,3 +1,4 @@
+
 # Compiled class files
 *.class
 
@@ -10,7 +11,7 @@
 # Mobile Tools for Java (J2ME)
 .mtj.tmp/
 
-# Package Files
+# Package files
 *.jar
 *.war
 *.nar
@@ -36,12 +37,13 @@ buildNumber.properties
 .mvn/timing.properties
 .mvn/wrapper/maven-wrapper.jar
 
-# Gradle (if used later)
+# Gradle
 .gradle/
 build/
 
 # IntelliJ IDEA
 .idea/
+**/.idea/
 *.iml
 *.iws
 *.ipr
@@ -63,9 +65,14 @@ tmp/
 Thumbs.db
 Desktop.ini
 
-# Local environment files
+# Local environment files and secrets
 .env
 .env.*
+*.env
+
+# Allow environment templates
+!.env.example
+!**/.env.example
 
 # Temporary files
 *.tmp
