@@ -1,11 +1,22 @@
 package com.example.ridelink_driver_service.model;
 
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+
 public class Vehicle {
 
     private Long id;
     private Long driverId;
+    @NotBlank(message = "Registration number is required")
+    @Size(min = 4, max = 15, message = "Registration number must contain between 4 and 15 characters")
     private String registrationNumber;
+
+    @NotBlank(message = "Vehicle type is required")
+    @Size(max = 30, message = "Vehicle type must not exceed 30 characters")
     private String vehicleType;
+
+    @NotBlank(message = "Vehicle model is required")
+    @Size(max = 100, message = "Vehicle model must not exceed 100 characters")
     private String model;
 
     public Vehicle() {

@@ -3,6 +3,8 @@ package com.example.ridelink_driver_service.service;
 import com.example.ridelink_driver_service.model.Driver;
 import com.example.ridelink_driver_service.repository.DriverRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
@@ -16,6 +18,10 @@ public class DriverService {
     }
 
     public Driver createDriver(Driver driver) {
+        if (driverRepository.findByLicenseNumber(driver.getLicenseNumber()) != null) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "A driver with this license number already exists");
+        }
         return driverRepository.save(driver);
     }
 
@@ -27,7 +33,7 @@ public class DriverService {
         Driver driver = driverRepository.findById(id);
 
         if (driver == null) {
-            return null;
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Driver not found");
         }
 
         driver.setAvailable(available);
