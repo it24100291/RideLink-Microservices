@@ -4,6 +4,10 @@ This service handles RideLink account creation.
 
 ## Register an account
 
+Base URL:
+
+http://localhost:8083
+
 Endpoint:
 
 POST /api/accounts/register
