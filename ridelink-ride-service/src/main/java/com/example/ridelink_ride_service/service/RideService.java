@@ -20,25 +20,19 @@ public class RideService {
     }
 
     public Ride createRide(Ride ride) {
-
         try {
-            List<DriverClient.DriverResponse> drivers =
-                    driverClient.getAvailableDrivers();
-
+            List<DriverClient.DriverResponse> drivers = driverClient.getAvailableDrivers();
             if (drivers.isEmpty()) {
                 return null;
             }
 
             DriverClient.DriverResponse driver = drivers.get(0);
-
             driverClient.updateAvailability(driver.id(), false);
 
             ride.setDriverId(driver.id());
             ride.setStatus("CONFIRMED");
-
             return rideRepository.save(ride);
-
-        } catch (RestClientException e) {
+        } catch (RestClientException exception) {
             return null;
         }
     }
