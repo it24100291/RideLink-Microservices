@@ -70,7 +70,7 @@ Desktop.ini
 .env.*
 *.env
 
-# Allow safe environment templates
+# Allow environment templates
 !.env.example
 !**/.env.example
 
