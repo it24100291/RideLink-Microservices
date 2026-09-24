@@ -10,12 +10,14 @@ import com.example.accountservice.service.AccountService;
 import com.example.accountservice.service.JwtService;
 import io.jsonwebtoken.Claims;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -89,6 +91,7 @@ public class AccountController {
             summary = "Get the authenticated account profile",
             description = "Returns the current account profile based on the verified token subject. Authentication is required."
     )
+    @SecurityRequirement(name = "bearerAuth")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Authenticated account profile returned"),
             @ApiResponse(responseCode = "401", description = "Missing or invalid bearer token"),
@@ -96,7 +99,8 @@ public class AccountController {
     })
     @GetMapping("/me")
     public AccountProfileResponse getCurrentAccount(
-            @RequestHeader(value = "Authorization", required = false) String authorizationHeader) {
+            @RequestHeader(value = "Authorization", required = false)
+            @Parameter(hidden = true) String authorizationHeader) {
         Long accountId = accountIdFromToken(authorizationHeader);
         accountService.requireActiveAccount(accountId);
         return accountService.getProfileById(accountId);
@@ -106,6 +110,7 @@ public class AccountController {
             summary = "Update the authenticated account name",
             description = "Updates only the current authenticated account's name. The request body does not accept an account id."
     )
+    @SecurityRequirement(name = "bearerAuth")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Account name updated"),
             @ApiResponse(responseCode = "401", description = "Missing or invalid bearer token"),
@@ -113,7 +118,8 @@ public class AccountController {
     })
     @PatchMapping("/me")
     public AccountProfileResponse updateCurrentAccount(
-            @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+            @RequestHeader(value = "Authorization", required = false)
+            @Parameter(hidden = true) String authorizationHeader,
             @Valid @org.springframework.web.bind.annotation.RequestBody UpdateAccountNameRequest request) {
         Long accountId = accountIdFromToken(authorizationHeader);
         accountService.requireActiveAccount(accountId);
@@ -124,6 +130,7 @@ public class AccountController {
             summary = "Manage an account status",
             description = "Allows an authenticated ADMIN to set an account to ACTIVE or SUSPENDED. Only verified JWT claims are trusted for the permission check."
     )
+    @SecurityRequirement(name = "bearerAuth")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Status updated"),
             @ApiResponse(responseCode = "401", description = "Missing or invalid bearer token"),
@@ -132,7 +139,8 @@ public class AccountController {
     })
     @PatchMapping("/{id}/status")
     public AccountProfileResponse updateAccountStatus(
-            @RequestHeader(value = "Authorization", required = false) String authorizationHeader,
+            @RequestHeader(value = "Authorization", required = false)
+            @Parameter(hidden = true) String authorizationHeader,
             @PathVariable Long id,
             @Valid @org.springframework.web.bind.annotation.RequestBody UpdateAccountStatusRequest request) {
         Claims claims = jwtService.validateBearerToken(authorizationHeader);

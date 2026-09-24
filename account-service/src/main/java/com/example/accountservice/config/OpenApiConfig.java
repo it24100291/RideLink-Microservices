@@ -1,7 +1,10 @@
 package com.example.accountservice.config;
 
 import io.swagger.v3.oas.annotations.OpenAPIDefinition;
+import io.swagger.v3.oas.annotations.enums.SecuritySchemeType;
 import io.swagger.v3.oas.annotations.info.Info;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.security.SecurityScheme;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
@@ -10,7 +13,16 @@ import org.springframework.context.annotation.Configuration;
                 title = "RideLink Account Service API",
                 description = "Account registration, login, self-service profile routes, and admin status management for RideLink.",
                 version = "1.0"
-        )
+        ),
+        security = {
+                @SecurityRequirement(name = "bearerAuth")
+        }
+)
+@SecurityScheme(
+        name = "bearerAuth",
+        type = SecuritySchemeType.HTTP,
+        scheme = "bearer",
+        bearerFormat = "JWT"
 )
 public class OpenApiConfig {
 }

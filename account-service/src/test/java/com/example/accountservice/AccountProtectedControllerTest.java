@@ -4,6 +4,7 @@ import com.example.accountservice.model.Account;
 import com.example.accountservice.model.AccountStatus;
 import com.example.accountservice.model.Role;
 import com.example.accountservice.repository.AccountRepository;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
@@ -65,6 +66,32 @@ class AccountProtectedControllerTest {
     @BeforeEach
     void setUp() {
         accountRepository.deleteAll();
+    }
+
+    @Test
+    void openApiSpec_usesBearerSecuritySchemeWithoutHeaderParameter() throws Exception {
+        String json = mockMvc.perform(get("/v3/api-docs"))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        JsonNode root = OBJECT_MAPPER.readTree(json);
+        JsonNode securityScheme = root.path("components").path("securitySchemes").path("bearerAuth");
+        org.assertj.core.api.Assertions.assertThat(securityScheme.path("type").asText()).isEqualTo("http");
+        org.assertj.core.api.Assertions.assertThat(securityScheme.path("scheme").asText()).isEqualTo("bearer");
+
+        JsonNode parameters = root.path("paths").path("/api/accounts/me").path("get").path("parameters");
+        boolean hasAuthorizationHeaderParam = false;
+        if (parameters.isArray()) {
+            for (JsonNode parameter : parameters) {
+                if ("Authorization".equals(parameter.path("name").asText()) && "header".equals(parameter.path("in").asText())) {
+                    hasAuthorizationHeaderParam = true;
+                    break;
+                }
+            }
+        }
+        org.assertj.core.api.Assertions.assertThat(hasAuthorizationHeaderParam).isFalse();
     }
 
     @Test
