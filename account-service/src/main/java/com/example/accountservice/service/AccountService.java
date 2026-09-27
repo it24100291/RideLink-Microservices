@@ -3,6 +3,7 @@ package com.example.accountservice.service;
 import com.example.accountservice.dto.AccountProfileResponse;
 import com.example.accountservice.dto.AccountResponse;
 import com.example.accountservice.dto.RegisterAccountRequest;
+import com.example.accountservice.dto.UpdateAccountProfileRequest;
 import com.example.accountservice.model.Account;
 import com.example.accountservice.model.AccountStatus;
 import com.example.accountservice.model.Role;
@@ -10,8 +11,10 @@ import com.example.accountservice.repository.AccountRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.nio.charset.StandardCharsets;
 import java.util.Locale;
 
 @Service
@@ -48,6 +51,10 @@ public class AccountService {
     }
 
     public AccountResponse verifyCredentials(String email, String password) {
+        return AccountResponse.fromEntity(authenticate(email, password));
+    }
+
+    public Account authenticate(String email, String password) {
         String normalizedEmail = email == null ? "" : email.trim().toLowerCase(Locale.ROOT);
         if (normalizedEmail.isEmpty() || password == null || password.isEmpty()) {
             throwAuthenticationFailure();
@@ -64,7 +71,7 @@ public class AccountService {
             throwAuthenticationFailure();
         }
 
-        return AccountResponse.fromEntity(account);
+        return account;
     }
 
     public Account getAccountById(Long accountId) {
@@ -106,6 +113,72 @@ public class AccountService {
         account.setStatus(newStatus);
         Account saved = accountRepository.save(account);
         return AccountProfileResponse.fromEntity(saved);
+    }
+
+    @Transactional
+    public AccountProfileResponse updateProfile(Long accountId, UpdateAccountProfileRequest request) {
+        Account account = requireActiveAccount(accountId);
+        if (request.name() == null && request.email() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Provide a name or email to update.");
+        }
+        String name = request.name() == null ? account.getName() : request.name().trim();
+        String email = request.email() == null ? account.getEmail() : request.email().trim().toLowerCase(Locale.ROOT);
+        if (name.isBlank() || email.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Name and email cannot be blank.");
+        }
+        if (!email.equals(account.getEmail())) {
+            requireCurrentPassword(account, request.currentPassword());
+            accountRepository.findByEmailIgnoreCase(email).ifPresent(existing -> {
+                if (!existing.getId().equals(accountId)) {
+                    throw new ResponseStatusException(HttpStatus.CONFLICT, "Email is already registered.");
+                }
+            });
+        }
+        account.setName(name);
+        account.setEmail(email);
+        return AccountProfileResponse.fromEntity(accountRepository.saveAndFlush(account));
+    }
+
+    @Transactional
+    public void changePassword(Long accountId, String currentPassword, String newPassword) {
+        Account account = requireActiveAccount(accountId);
+        requireCurrentPassword(account, currentPassword);
+        if (newPassword == null || newPassword.isBlank() || newPassword.length() < 6
+                || newPassword.getBytes(StandardCharsets.UTF_8).length > 72) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Password must be at least 6 characters and at most 72 UTF-8 bytes.");
+        }
+        if (passwordEncoder.matches(newPassword, account.getPassword())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "New password must differ from the current password.");
+        }
+        account.setPassword(passwordEncoder.encode(newPassword));
+        account.invalidateTokens();
+        accountRepository.saveAndFlush(account);
+    }
+
+    @Transactional
+    public AccountProfileResponse changeRole(Long actorId, Long targetId, Role role) {
+        Account actor = requireActiveAccount(actorId);
+        if (actor.getRole() != Role.ADMIN) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied.");
+        }
+        if (role == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Role is required.");
+        }
+        if (actorId.equals(targetId) && role != Role.ADMIN) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Administrators cannot demote their own account.");
+        }
+        Account target = findAccountOrThrow(targetId);
+        if (target.getRole() != role) {
+            target.setRole(role);
+            target.invalidateTokens();
+        }
+        return AccountProfileResponse.fromEntity(accountRepository.saveAndFlush(target));
+    }
+
+    private void requireCurrentPassword(Account account, String password) {
+        if (password == null || password.isBlank() || !passwordEncoder.matches(password, account.getPassword())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Current password is incorrect or missing.");
+        }
     }
 
     private Account findAccountOrThrow(Long accountId) {

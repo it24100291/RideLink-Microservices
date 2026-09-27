@@ -40,12 +40,17 @@ public class JwtService {
     }
 
     public String generateToken(Long accountId, Role role, Instant issuedAt, Instant expiresAt) {
+        return generateToken(accountId, role, 0L, issuedAt, expiresAt);
+    }
+
+    public String generateToken(Long accountId, Role role, long tokenVersion, Instant issuedAt, Instant expiresAt) {
         PrivateKey privateKey = loadPrivateKey();
         return Jwts.builder()
                 .setIssuer(ISSUER)
                 .setAudience(AUDIENCE)
                 .setSubject(accountId.toString())
                 .claim("role", role.name())
+                .claim("tokenVersion", tokenVersion)
                 .setIssuedAt(Date.from(issuedAt))
                 .setExpiration(Date.from(expiresAt))
                 .signWith(privateKey, SignatureAlgorithm.RS256)

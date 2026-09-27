@@ -320,6 +320,151 @@ class AccountProtectedControllerTest {
         org.assertj.core.api.Assertions.assertThat(refreshed.getStatus()).isEqualTo(AccountStatus.SUSPENDED);
     }
 
+    @Test
+    void profileChangesEmailAndNameAndLoginUsesNewEmail() throws Exception {
+        Account user = createAccount("alice@example.com", Role.PASSENGER);
+        mockMvc.perform(patch("/api/accounts/me")
+                .header("Authorization", "Bearer " + signedToken(user.getId(), user.getRole()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"name\":\" Updated Alice \",\"email\":\"NEW@example.com\",\"currentPassword\":\"StrongPass123\",\"role\":\"ADMIN\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("Updated Alice"))
+                .andExpect(jsonPath("$.email").value("new@example.com"))
+                .andExpect(jsonPath("$.role").value("PASSENGER"))
+                .andExpect(jsonPath("$.password").doesNotExist());
+        login("alice@example.com", "StrongPass123", 401);
+        login("new@example.com", "StrongPass123", 200);
+    }
+
+    @Test
+    void profileRejectsInvalidDuplicateAndUnauthorizedEmailChangesWithoutPartialUpdates() throws Exception {
+        Account user = createAccount("alice@example.com", Role.PASSENGER);
+        createAccount("taken@example.com", Role.DRIVER);
+        String[] bodies = {"{}", "{\"name\":\" \"}", "{\"email\":\"bad-email\"}",
+                "{\"email\":\"new@example.com\"}",
+                "{\"email\":\"new@example.com\",\"currentPassword\":\"wrong\"}",
+                "{\"name\":\"Changed\",\"email\":\"TAKEN@example.com\",\"currentPassword\":\"StrongPass123\"}"};
+        for (int i = 0; i < bodies.length; i++) {
+            mockMvc.perform(patch("/api/accounts/me")
+                    .header("Authorization", "Bearer " + signedToken(user.getId(), user.getRole()))
+                    .contentType(MediaType.APPLICATION_JSON).content(bodies[i]))
+                    .andExpect(status().is(i == bodies.length - 1 ? 409 : 400));
+        }
+        Account unchanged = accountRepository.findById(user.getId()).orElseThrow();
+        org.assertj.core.api.Assertions.assertThat(unchanged.getEmail()).isEqualTo("alice@example.com");
+        org.assertj.core.api.Assertions.assertThat(unchanged.getName()).isEqualTo("Test User");
+    }
+
+    @Test
+    void passwordChangeHashesPasswordRevokesOldTokenAndAllowsNewLogin() throws Exception {
+        Account user = createAccount("alice@example.com", Role.PASSENGER);
+        String oldToken = signedToken(user.getId(), user.getRole());
+        mockMvc.perform(patch("/api/accounts/me/password")
+                .header("Authorization", "Bearer " + oldToken)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"currentPassword\":\"StrongPass123\",\"newPassword\":\"NewStrongPass456\"}"))
+                .andExpect(status().isNoContent());
+        Account changed = accountRepository.findById(user.getId()).orElseThrow();
+        org.assertj.core.api.Assertions.assertThat(new BCryptPasswordEncoder().matches("NewStrongPass456", changed.getPassword())).isTrue();
+        mockMvc.perform(get("/api/accounts/me").header("Authorization", "Bearer " + oldToken))
+                .andExpect(status().isUnauthorized());
+        login("alice@example.com", "StrongPass123", 401);
+        String newToken = login("alice@example.com", "NewStrongPass456", 200);
+        mockMvc.perform(get("/api/accounts/me").header("Authorization", "Bearer " + newToken))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void passwordChangeRejectsWrongCurrentWeakSameAndOverlongPasswords() throws Exception {
+        Account user = createAccount("alice@example.com", Role.PASSENGER);
+        String[][] passwords = {{"wrong", "ValidPass123"}, {"StrongPass123", "short"},
+                {"StrongPass123", "StrongPass123"}, {"StrongPass123", "é".repeat(40)}};
+        for (String[] pair : passwords) {
+            mockMvc.perform(patch("/api/accounts/me/password")
+                    .header("Authorization", "Bearer " + signedToken(user.getId(), user.getRole()))
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(OBJECT_MAPPER.writeValueAsString(java.util.Map.of("currentPassword", pair[0], "newPassword", pair[1]))))
+                    .andExpect(status().isBadRequest());
+        }
+        login("alice@example.com", "StrongPass123", 200);
+    }
+
+    @Test
+    void adminCanChangeRolesAndOldTokensAreRevoked() throws Exception {
+        Account admin = createAccount("admin@example.com", Role.ADMIN);
+        Account target = createAccount("target@example.com", Role.PASSENGER);
+        String oldToken = signedToken(target.getId(), target.getRole());
+        for (Role role : new Role[]{Role.DRIVER, Role.ADMIN, Role.PASSENGER}) {
+            mockMvc.perform(patch("/api/accounts/{id}/role", target.getId())
+                    .header("Authorization", "Bearer " + signedToken(admin.getId(), admin.getRole()))
+                    .contentType(MediaType.APPLICATION_JSON).content("{\"role\":\"" + role + "\"}"))
+                    .andExpect(status().isOk()).andExpect(jsonPath("$.role").value(role.name()));
+        }
+        mockMvc.perform(get("/api/accounts/me").header("Authorization", "Bearer " + oldToken))
+                .andExpect(status().isUnauthorized());
+        String newToken = login("target@example.com", "StrongPass123", 200);
+        mockMvc.perform(get("/api/accounts/me").header("Authorization", "Bearer " + newToken))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.role").value("PASSENGER"));
+    }
+
+    @Test
+    void roleManagementRejectsNonAdminsSelfDemotionMissingTargetsAndInvalidRoles() throws Exception {
+        Account admin = createAccount("admin@example.com", Role.ADMIN);
+        Account passenger = createAccount("passenger@example.com", Role.PASSENGER);
+        Account driver = createAccount("driver@example.com", Role.DRIVER);
+        for (Account caller : new Account[]{passenger, driver}) {
+            mockMvc.perform(patch("/api/accounts/{id}/role", caller.getId())
+                    .header("Authorization", "Bearer " + signedToken(caller.getId(), Role.ADMIN))
+                    .contentType(MediaType.APPLICATION_JSON).content("{\"role\":\"ADMIN\"}"))
+                    .andExpect(status().isForbidden());
+        }
+        String token = signedToken(admin.getId(), Role.ADMIN);
+        mockMvc.perform(patch("/api/accounts/{id}/role", admin.getId())
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON).content("{\"role\":\"PASSENGER\"}"))
+                .andExpect(status().isConflict());
+        mockMvc.perform(patch("/api/accounts/999999/role")
+                .header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON).content("{\"role\":\"DRIVER\"}"))
+                .andExpect(status().isNotFound());
+        for (String body : new String[]{"{}", "{\"role\":\"INVALID\"}"}) {
+            mockMvc.perform(patch("/api/accounts/{id}/role", passenger.getId())
+                    .header("Authorization", "Bearer " + token)
+                    .contentType(MediaType.APPLICATION_JSON).content(body))
+                    .andExpect(status().isBadRequest());
+        }
+    }
+
+    @Test
+    void newEndpointsRequireAuthenticationAndRejectSuspendedAccounts() throws Exception {
+        Account admin = createAccount("admin@example.com", Role.ADMIN);
+        String token = signedToken(admin.getId(), Role.ADMIN);
+        admin.setStatus(AccountStatus.SUSPENDED);
+        accountRepository.saveAndFlush(admin);
+        String[][] requests = {{"/api/accounts/me/password", "{\"currentPassword\":\"StrongPass123\",\"newPassword\":\"NewPassword123\"}"},
+                {"/api/accounts/123/role", "{\"role\":\"DRIVER\"}"}};
+        for (String[] request : requests) {
+            mockMvc.perform(patch(request[0]).contentType(MediaType.APPLICATION_JSON).content(request[1]))
+                    .andExpect(status().isUnauthorized());
+            mockMvc.perform(patch(request[0]).header("Authorization", "Bearer " + token)
+                    .contentType(MediaType.APPLICATION_JSON).content(request[1]))
+                    .andExpect(status().isUnauthorized());
+        }
+    }
+
+    private Account createAccount(String email, Role role) {
+        return accountRepository.saveAndFlush(new Account("Test User", email,
+                new BCryptPasswordEncoder().encode("StrongPass123"), role, AccountStatus.ACTIVE));
+    }
+
+    private String login(String email, String password, int expectedStatus) throws Exception {
+        String response = mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/auth/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(OBJECT_MAPPER.writeValueAsString(java.util.Map.of("email", email, "password", password))))
+                .andExpect(status().is(expectedStatus)).andReturn().getResponse().getContentAsString();
+        return expectedStatus == 200 ? OBJECT_MAPPER.readTree(response).get("accessToken").asText() : null;
+    }
+
     private static String signedToken(Long accountId, Role role) {
         return signedToken(accountId, role, null);
     }

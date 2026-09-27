@@ -1,6 +1,5 @@
 package com.example.accountservice.controller;
 
-import com.example.accountservice.dto.AccountResponse;
 import com.example.accountservice.dto.LoginRequest;
 import com.example.accountservice.dto.LoginResponse;
 import com.example.accountservice.service.AccountService;
@@ -65,10 +64,10 @@ public class AuthController {
     )
     @PostMapping("/login")
     public ResponseEntity<LoginResponse> login(@Valid @org.springframework.web.bind.annotation.RequestBody LoginRequest request) {
-        AccountResponse account = accountService.verifyCredentials(request.email(), request.password());
+        var account = accountService.authenticate(request.email(), request.password());
         Instant issuedAt = Instant.now();
         Instant expiresAt = issuedAt.plusSeconds(JwtService.TOKEN_TTL_SECONDS);
-        String accessToken = jwtService.generateToken(account.id(), account.role(), issuedAt, expiresAt);
+        String accessToken = jwtService.generateToken(account.getId(), account.getRole(), account.getTokenVersion(), issuedAt, expiresAt);
 
         return ResponseEntity.ok(new LoginResponse(
                 accessToken,

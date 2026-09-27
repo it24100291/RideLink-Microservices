@@ -42,6 +42,20 @@ public class Account {
     @Column(nullable = false)
     private AccountStatus status = AccountStatus.ACTIVE;
 
+    @Column(nullable = false)
+    private long tokenVersion;
+
+    @Version
+    private long version;
+
+    public long getTokenVersion() {
+        return tokenVersion;
+    }
+
+    public void invalidateTokens() {
+        tokenVersion++;
+    }
+
     public Account() {
     }
 

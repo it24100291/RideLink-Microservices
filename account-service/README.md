@@ -79,15 +79,60 @@ Authorization: Bearer <token>
 
 ### PATCH /api/accounts/me
 
-Updates only the authenticated account's own name.
+Updates the authenticated account's own name and/or email. Omitted or null fields are left unchanged; at least one name or email must be supplied. Blank values are rejected. IDs, roles, and status cannot be changed through this endpoint.
 
 Example request JSON:
 
 ```json
 {
-  "name": "Alice Updated"
+  "name": "Alice Updated",
+  "email": "alice.updated@example.com",
+  "currentPassword": "Secret123"
 }
 ```
+
+- A name-only request remains supported and does not require the password.
+- Changing email requires the current password. Email addresses are trimmed, normalized to lowercase, and must be unique (case-insensitive).
+- Log in using the new email after a change. This endpoint does not verify ownership of the new email through an email message.
+- Invalid input or an incorrect current password returns `400`; a duplicate email or concurrent update returns `409`.
+- Responses contain only `id`, `name`, `email`, `role`, and `status`.
+
+### PATCH /api/accounts/me/password
+
+Requires the authenticated account's bearer token and current password:
+
+```json
+{
+  "currentPassword": "Secret123",
+  "newPassword": "NewSecret456!"
+}
+```
+
+Returns `204` with no response body. The new password must differ from the old one and contain at least 6 characters and at most 72 UTF-8 bytes (the BCrypt limit). It is stored as a BCrypt hash. Missing/incorrect current passwords and invalid new passwords return `400`.
+
+After success, all older tokens for this account are rejected by Account Service. Log in again with the new password.
+
+### PATCH /api/accounts/{id}/role
+
+Requires a bearer token belonging to an active administrator. The administrator's current database role determines permission.
+
+```json
+{
+  "role": "DRIVER"
+}
+```
+
+Allowed roles: `PASSENGER`, `DRIVER`, `ADMIN`. Returns the updated profile (`200`). Public registration as ADMIN remains prohibited. Administrators cannot demote themselves (`409`); another active administrator must make that change. Non-admin callers receive `403`, missing targets `404`, and invalid/missing roles `400`.
+
+A role change invalidates the target account's older tokens in Account Service. The target must log in again to receive a JWT with its new role. Assigning the existing role leaves tokens valid.
+
+### Token invalidation and integration
+
+Tokens include `tokenVersion`. Account Service checks this against the account record on protected requests. Password and role changes increment it. Legacy tokens without this claim are treated as version zero and stop working after the first increment.
+
+Other services that only verify JWT signatures cannot detect these changes immediately. Driver and Ride integration must also check account/token state if immediate revocation is required. Changing an account role does not create or remove a Driver profile or alter existing rides.
+
+The account entity also uses optimistic locking: competing updates return `409` rather than silently overwriting newer account data. The default H2 database is in memory; accounts and these versions reset when the service restarts.
 
 ### PATCH /api/accounts/{id}/status
 

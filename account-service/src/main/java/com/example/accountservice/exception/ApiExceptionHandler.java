@@ -18,6 +18,15 @@ import java.util.Map;
 @RestControllerAdvice
 public class ApiExceptionHandler {
 
+    @ExceptionHandler({org.springframework.dao.DataIntegrityViolationException.class,
+            org.springframework.dao.OptimisticLockingFailureException.class})
+    public ResponseEntity<Map<String, Object>> handleConflict(Exception ex, HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of(
+                "status", 409, "error", "Conflict",
+                "message", "Account data conflicts with an existing record or a concurrent update. Refresh and retry.",
+                "path", request.getRequestURI(), "timestamp", LocalDateTime.now()));
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, Object>> handleValidationException(
             MethodArgumentNotValidException ex,

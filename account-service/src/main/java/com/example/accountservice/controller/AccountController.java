@@ -3,7 +3,9 @@ package com.example.accountservice.controller;
 import com.example.accountservice.dto.AccountProfileResponse;
 import com.example.accountservice.dto.AccountResponse;
 import com.example.accountservice.dto.RegisterAccountRequest;
-import com.example.accountservice.dto.UpdateAccountNameRequest;
+import com.example.accountservice.dto.UpdateAccountProfileRequest;
+import com.example.accountservice.dto.ChangePasswordRequest;
+import com.example.accountservice.dto.UpdateAccountRoleRequest;
 import com.example.accountservice.dto.UpdateAccountStatusRequest;
 import com.example.accountservice.model.Role;
 import com.example.accountservice.service.AccountService;
@@ -107,12 +109,14 @@ public class AccountController {
     }
 
     @Operation(
-            summary = "Update the authenticated account name",
-            description = "Updates only the current authenticated account's name. The request body does not accept an account id."
+            summary = "Update the authenticated account profile",
+            description = "Updates name and/or email. Changing email requires currentPassword. Identity comes from the token."
     )
     @SecurityRequirement(name = "bearerAuth")
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Account name updated"),
+            @ApiResponse(responseCode = "200", description = "Account profile updated"),
+            @ApiResponse(responseCode = "400", description = "Invalid profile or incorrect current password"),
+            @ApiResponse(responseCode = "409", description = "Email already registered or concurrent update"),
             @ApiResponse(responseCode = "401", description = "Missing or invalid bearer token"),
             @ApiResponse(responseCode = "404", description = "Authenticated account not found")
     })
@@ -120,10 +124,30 @@ public class AccountController {
     public AccountProfileResponse updateCurrentAccount(
             @RequestHeader(value = "Authorization", required = false)
             @Parameter(hidden = true) String authorizationHeader,
-            @Valid @org.springframework.web.bind.annotation.RequestBody UpdateAccountNameRequest request) {
+            @Valid @org.springframework.web.bind.annotation.RequestBody UpdateAccountProfileRequest request) {
         Long accountId = accountIdFromToken(authorizationHeader);
         accountService.requireActiveAccount(accountId);
-        return accountService.updateName(accountId, request.name());
+        return accountService.updateProfile(accountId, request);
+    }
+
+    @Operation(summary = "Change your password", description = "Requires the current password. Invalidates existing tokens; log in again afterwards.")
+    @SecurityRequirement(name = "bearerAuth")
+    @PatchMapping("/me/password")
+    public ResponseEntity<Void> changePassword(
+            @RequestHeader(value = "Authorization", required = false) @Parameter(hidden = true) String authorizationHeader,
+            @Valid @org.springframework.web.bind.annotation.RequestBody ChangePasswordRequest request) {
+        accountService.changePassword(accountIdFromToken(authorizationHeader), request.currentPassword(), request.newPassword());
+        return ResponseEntity.noContent().build();
+    }
+
+    @Operation(summary = "Change an account role", description = "Active administrators may assign PASSENGER, DRIVER or ADMIN. Self-demotion is blocked. Changed accounts must log in again.")
+    @SecurityRequirement(name = "bearerAuth")
+    @PatchMapping("/{id}/role")
+    public AccountProfileResponse changeRole(
+            @RequestHeader(value = "Authorization", required = false) @Parameter(hidden = true) String authorizationHeader,
+            @PathVariable Long id,
+            @Valid @org.springframework.web.bind.annotation.RequestBody UpdateAccountRoleRequest request) {
+        return accountService.changeRole(accountIdFromToken(authorizationHeader), id, request.role());
     }
 
     @Operation(
@@ -143,8 +167,7 @@ public class AccountController {
             @Parameter(hidden = true) String authorizationHeader,
             @PathVariable Long id,
             @Valid @org.springframework.web.bind.annotation.RequestBody UpdateAccountStatusRequest request) {
-        Claims claims = jwtService.validateBearerToken(authorizationHeader);
-        Long currentAccountId = parseSubject(claims);
+        Long currentAccountId = accountIdFromToken(authorizationHeader);
         var currentAccount = accountService.requireActiveAccount(currentAccountId);
         if (currentAccount.getRole() != Role.ADMIN) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied.");
@@ -154,7 +177,14 @@ public class AccountController {
 
     private Long accountIdFromToken(String authorizationHeader) {
         Claims claims = jwtService.validateBearerToken(authorizationHeader);
-        return parseSubject(claims);
+        Long accountId = parseSubject(claims);
+        var account = accountService.requireActiveAccount(accountId);
+        Object version = claims.get("tokenVersion");
+        long tokenVersion = version == null ? 0 : version instanceof Number number ? number.longValue() : -1;
+        if (tokenVersion != account.getTokenVersion()) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Token has been revoked. Please log in again.");
+        }
+        return accountId;
     }
 
     private Long parseSubject(Claims claims) {
