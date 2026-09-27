@@ -1,45 +1,26 @@
 package com.example.ridelink_ride_service.controller;
-
 import com.example.ridelink_ride_service.model.Ride;
 import com.example.ridelink_ride_service.service.RideService;
-import org.springframework.http.ResponseEntity;
+import com.example.ridelink_ride_service.security.Identity;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.*;
 import org.springframework.web.bind.annotation.*;
-
+import java.util.*;
 @RestController
 @RequestMapping("/api/rides")
 public class RideController {
-
-    private final RideService rideService;
-
-    public RideController(RideService rideService) {
-        this.rideService = rideService;
-    }
-
+    private final RideService rides;
+    public RideController(RideService rides){this.rides=rides;}
     @PostMapping
-    public ResponseEntity<?> createRide(@RequestBody Ride ride) {
-
-        Ride createdRide = rideService.createRide(ride);
-
-        if (createdRide == null) {
-            return ResponseEntity
-                    .status(503)
-                    .body(java.util.Map.of(
-                            "code", "DRIVER_SERVICE_UNAVAILABLE",
-                            "message", "A driver cannot be assigned now. Please retry."
-                    ));
-        }
-        return ResponseEntity.ok(createdRide);
+    public Ride create(@RequestAttribute("identity") Identity identity,
+            @RequestHeader(value="Idempotency-Key",required=false) UUID key,@Valid @RequestBody Booking request) {
+        return rides.create(identity,key==null?UUID.randomUUID():key,request.pickup(),request.destination());
     }
-
-    @GetMapping("/{id}")
-    public ResponseEntity<?> getRide(@PathVariable Long id) {
-
-        Ride ride = rideService.getRide(id);
-
-        if (ride == null) {
-            return ResponseEntity.notFound().build();
-        }
-
-        return ResponseEntity.ok(ride);
+    @GetMapping public List<Ride> mine(@RequestAttribute("identity") Identity identity){return rides.mine(identity);}
+    @GetMapping("/{id}") public Ride get(@RequestAttribute("identity") Identity identity,@PathVariable Long id){return rides.get(id,identity);}
+    @PatchMapping("/{id}/{action}")
+    public Ride transition(@RequestAttribute("identity") Identity identity,@PathVariable Long id,@PathVariable String action) {
+        return rides.transition(id,identity,action);
     }
+    public record Booking(@NotBlank @Size(max=255) String pickup,@NotBlank @Size(max=255) String destination){ }
 }

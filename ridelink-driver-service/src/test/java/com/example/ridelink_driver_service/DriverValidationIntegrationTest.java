@@ -22,6 +22,19 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 class DriverValidationIntegrationTest {
 
+    @org.springframework.boot.test.mock.mockito.MockBean
+    private com.example.ridelink_driver_service.security.AccountClient accounts;
+
+    @Autowired private com.example.ridelink_driver_service.repository.DriverStore drivers;
+    @Autowired private com.example.ridelink_driver_service.repository.VehicleStore vehicles;
+
+    @org.junit.jupiter.api.BeforeEach
+    void setupIdentity() {
+        vehicles.deleteAll(); drivers.deleteAll();
+        org.mockito.Mockito.when(accounts.authenticate(org.mockito.ArgumentMatchers.any()))
+                .thenReturn(new com.example.ridelink_driver_service.security.Identity(10L, "Test", "DRIVER"));
+    }
+
     @Autowired
     private MockMvc mockMvc;
 
@@ -141,7 +154,7 @@ class DriverValidationIntegrationTest {
 
         mockMvc.perform(get("/api/drivers/available"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[?(@.id == " + id + ")].licenseNumber").value("RIDE123"));
+                .andExpect(jsonPath("$[?(@.id == " + id + ")].name").value("Ride Client Driver"));
 
         mockMvc.perform(patch("/api/drivers/{id}/availability", id).param("available", "false"))
                 .andExpect(status().isOk())

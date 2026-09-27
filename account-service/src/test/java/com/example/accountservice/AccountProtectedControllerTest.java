@@ -31,7 +31,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@SpringBootTest
+@SpringBootTest(properties = "integration.account-service-key=test-service-key")
 @AutoConfigureMockMvc
 class AccountProtectedControllerTest {
 
@@ -450,6 +450,26 @@ class AccountProtectedControllerTest {
                     .contentType(MediaType.APPLICATION_JSON).content(request[1]))
                     .andExpect(status().isUnauthorized());
         }
+    }
+
+    @Test
+    void introspectionRequiresServiceCredentialAndChecksLiveAccountState() throws Exception {
+        Account user = createAccount("introspection@example.com", Role.DRIVER);
+        String token = signedToken(user.getId(), Role.DRIVER);
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/internal/auth/introspect")
+                .header("Authorization", "Bearer " + token)).andExpect(status().isForbidden());
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/internal/auth/introspect")
+                .header("Authorization", "Bearer " + token).header("X-Service-Key", "test-service-key"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.accountId").value(user.getId()))
+                .andExpect(jsonPath("$.role").value("DRIVER"));
+        user.invalidateTokens(); user = accountRepository.saveAndFlush(user);
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/internal/auth/introspect")
+                .header("Authorization", "Bearer " + token).header("X-Service-Key", "test-service-key"))
+                .andExpect(status().isUnauthorized());
+        user.setStatus(AccountStatus.SUSPENDED); accountRepository.saveAndFlush(user);
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/internal/auth/introspect")
+                .header("Authorization", "Bearer " + token).header("X-Service-Key", "test-service-key"))
+                .andExpect(status().isUnauthorized());
     }
 
     private Account createAccount(String email, Role role) {

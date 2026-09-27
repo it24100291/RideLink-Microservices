@@ -3,8 +3,12 @@ package com.example.ridelink_driver_service.model;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
+@jakarta.persistence.Entity
+@jakarta.persistence.Table(name = "vehicles")
 public class Vehicle {
 
+    @jakarta.persistence.Id
+    @jakarta.persistence.GeneratedValue(strategy = jakarta.persistence.GenerationType.IDENTITY)
     private Long id;
     private Long driverId;
     @NotBlank(message = "Registration number is required")

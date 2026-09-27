@@ -1,81 +1,38 @@
 package com.example.ridelink_ride_service.model;
-
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-
+import jakarta.persistence.*;
+import java.time.Instant;
 @Entity
+@Table(name="rides")
 public class Ride {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-
+    @Id @GeneratedValue(strategy=GenerationType.IDENTITY) private Long id;
+    @Column(nullable=false,unique=true) private String reservationId;
+    private Long passengerAccountId;
     private String passengerName;
     private String pickup;
     private String destination;
     private Long driverId;
+    private Long driverAccountId;
     private String status;
-
-    public Ride() {
+    private boolean releasePending;
+    private Instant createdAt;
+    public Ride() { }
+    public Ride(String reservationId,Long passengerAccountId,String passengerName,String pickup,String destination) {
+        this.reservationId=reservationId; this.passengerAccountId=passengerAccountId; this.passengerName=passengerName;
+        this.pickup=pickup; this.destination=destination; status="PENDING"; createdAt=Instant.now();
     }
-
-    public Ride(Long id, String passengerName, String pickup,
-                String destination, Long driverId, String status) {
-        this.id = id;
-        this.passengerName = passengerName;
-        this.pickup = pickup;
-        this.destination = destination;
-        this.driverId = driverId;
-        this.status = status;
-    }
-
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
-
-    public String getPassengerName() {
-        return passengerName;
-    }
-
-    public void setPassengerName(String passengerName) {
-        this.passengerName = passengerName;
-    }
-
-    public String getPickup() {
-        return pickup;
-    }
-
-    public void setPickup(String pickup) {
-        this.pickup = pickup;
-    }
-
-    public String getDestination() {
-        return destination;
-    }
-
-    public void setDestination(String destination) {
-        this.destination = destination;
-    }
-
-    public Long getDriverId() {
-        return driverId;
-    }
-
-    public void setDriverId(Long driverId) {
-        this.driverId = driverId;
-    }
-
-    public String getStatus() {
-        return status;
-    }
-
-    public void setStatus(String status) {
-        this.status = status;
-    }
+    public Long getId(){return id;}
+    public String getReservationId(){return reservationId;}
+    public Long getPassengerAccountId(){return passengerAccountId;}
+    public String getPassengerName(){return passengerName;}
+    public String getPickup(){return pickup;}
+    public String getDestination(){return destination;}
+    public Long getDriverId(){return driverId;}
+    public Long getDriverAccountId(){return driverAccountId;}
+    public String getStatus(){return status;}
+    public boolean isReleasePending(){return releasePending;}
+    public Instant getCreatedAt(){return createdAt;}
+    public void setDriverId(Long v){driverId=v;}
+    public void setDriverAccountId(Long v){driverAccountId=v;}
+    public void setStatus(String v){status=v;}
+    public void setReleasePending(boolean v){releasePending=v;}
 }

@@ -1,4 +1,4 @@
-package com.example.ridelink_driver_service.exception;
+package com.example.ridelink_ride_service.exception;
 
 import jakarta.validation.ConstraintViolationException;
 import org.springframework.http.HttpStatus;
