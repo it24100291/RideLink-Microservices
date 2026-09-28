@@ -25,8 +25,8 @@ public class DriverController {
     @GetMapping("/me")
     public Driver mine(@RequestAttribute("identity") Identity identity) { return service.mine(identity); }
     @GetMapping("/available")
-    public List<AvailableDriver> available() {
-        return service.getAvailableDrivers().stream().map(d -> new AvailableDriver(d.getId(), d.getName(), d.getServiceArea(), d.getCurrentLocation())).toList();
+    public List<AvailableDriver> available(@RequestParam(name="serviceArea", required=false) String serviceArea) {
+        return service.getAvailableDrivers(serviceArea).stream().map(d -> new AvailableDriver(d.getId(), d.getName(), d.getServiceArea(), d.getCurrentLocation())).toList();
     }
     @PatchMapping("/{id}/availability")
     public Driver availability(@RequestAttribute("identity") Identity identity, @PathVariable @Positive Long id,

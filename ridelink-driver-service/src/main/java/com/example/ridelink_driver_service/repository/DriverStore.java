@@ -4,6 +4,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.*;
 public interface DriverStore extends JpaRepository<Driver, Long> {
     List<Driver> findByAvailableTrueAndReservationIdIsNullOrderByIdAsc();
+    List<Driver> findByAvailableTrueAndReservationIdIsNullAndServiceAreaIgnoreCaseOrderByIdAsc(String serviceArea);
     Optional<Driver> findByAccountId(Long id);
     Optional<Driver> findByLicenseNumberIgnoreCase(String license);
 }

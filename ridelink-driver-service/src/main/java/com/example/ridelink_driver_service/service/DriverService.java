@@ -21,6 +21,10 @@ public class DriverService {
         return drivers.save(driver);
     }
     public List<Driver> getAvailableDrivers() { return drivers.findAvailable(); }
+    public List<Driver> getAvailableDrivers(String serviceArea) {
+        if (serviceArea == null || serviceArea.isBlank()) return getAvailableDrivers();
+        return drivers.findAvailable(serviceArea.trim());
+    }
     public Driver get(Long id) {
         Driver driver = drivers.findById(id);
         if (driver == null) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Driver not found");

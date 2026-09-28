@@ -162,12 +162,152 @@ class DriverValidationIntegrationTest {
                 .andExpect(jsonPath("$.available").value(false));
     }
 
+    @Test
+    void returnsAllAvailableDriversWhenServiceAreaIsOmitted() throws Exception {
+        saveDriver("Malabe Driver", "MALABE1", true, "Malabe");
+        saveDriver("Colombo Driver", "COLOMBO1", true, "Colombo");
+        saveDriver("Unavailable Malabe Driver", "MALABE2", false, "Malabe");
+
+        mockMvc.perform(get("/api/drivers/available"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$..name").value(org.hamcrest.Matchers.containsInAnyOrder(
+                        "Malabe Driver", "Colombo Driver")));
+    }
+
+    @Test
+    void filtersAvailableDriversByServiceAreaIgnoringCase() throws Exception {
+        saveDriver("Malabe Driver", "MALABE1", true, "Malabe");
+        saveDriver("Colombo Driver", "COLOMBO1", true, "Colombo");
+        saveDriver("Unavailable Malabe Driver", "MALABE2", false, "Malabe");
+
+        mockMvc.perform(get("/api/drivers/available").param("serviceArea", "mAlAbE"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$..name").value(org.hamcrest.Matchers.contains("Malabe Driver")));
+    }
+
+    @Test
+    void returnsEmptyListWhenNoAvailableDriversMatchServiceArea() throws Exception {
+        saveDriver("Malabe Driver", "MALABE1", true, "Malabe");
+
+        mockMvc.perform(get("/api/drivers/available").param("serviceArea", "Jaffna"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isEmpty());
+    }
+
+    @Test
+    void updatesExistingDriverLocation() throws Exception {
+        com.example.ridelink_driver_service.model.Driver driver =
+                new com.example.ridelink_driver_service.model.Driver(null, "Location Driver", "LOC12345", true);
+        driver.setAccountId(10L);
+        driver = drivers.save(driver);
+
+        mockMvc.perform(patch("/api/drivers/{id}/location", driver.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"currentLocation\":\"Colombo\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.currentLocation").value("Colombo"));
+    }
+
+    @Test
+    void returnsNotFoundWhenUpdatingLocationForMissingDriver() throws Exception {
+        mockMvc.perform(patch("/api/drivers/999999/location")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"currentLocation\":\"Colombo\"}"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.message").value("Driver not found"));
+    }
+
+    @Test
+    void listsAndRetrievesVehiclesForTheirDriver() throws Exception {
+        com.example.ridelink_driver_service.model.Driver driver =
+                new com.example.ridelink_driver_service.model.Driver(null, "Vehicle Driver", "VEH12345", true);
+        driver.setAccountId(10L);
+        driver = drivers.save(driver);
+
+        MvcResult created = mockMvc.perform(post("/api/drivers/{driverId}/vehicles", driver.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(vehicleJson("CAB-1234")))
+                .andExpect(status().isOk())
+                .andReturn();
+        long vehicleId = objectMapper.readTree(created.getResponse().getContentAsString()).get("id").asLong();
+
+        mockMvc.perform(get("/api/drivers/{driverId}/vehicles", driver.getId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value(vehicleId))
+                .andExpect(jsonPath("$[0].registrationNumber").value("CAB-1234"));
+
+        mockMvc.perform(get("/api/vehicles/{vehicleId}", vehicleId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(vehicleId))
+                .andExpect(jsonPath("$.driverId").value(driver.getId()));
+    }
+
+    @Test
+    void rejectsBlankVehicleFieldsWithStructuredValidationErrors() throws Exception {
+        MvcResult driverResult = mockMvc.perform(post("/api/drivers")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(driverJson("Vehicle Validation Driver", "VEHVALID1")))
+                .andExpect(status().isOk())
+                .andReturn();
+        long driverId = objectMapper.readTree(driverResult.getResponse().getContentAsString())
+                .get("id").asLong();
+
+        mockMvc.perform(post("/api/drivers/{driverId}/vehicles", driverId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(vehicleJson("", "CAR", "Toyota")))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.fieldErrors.registrationNumber").exists());
+
+        mockMvc.perform(post("/api/drivers/{driverId}/vehicles", driverId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(vehicleJson("CAB-1234", "", "Toyota")))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.fieldErrors.vehicleType").exists());
+
+        mockMvc.perform(post("/api/drivers/{driverId}/vehicles", driverId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(vehicleJson("CAB-1234", "CAR", " ")))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.fieldErrors.model").exists());
+    }
+
+    @Test
+    void rejectsBlankLicenseNumber() throws Exception {
+        mockMvc.perform(post("/api/drivers")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"Alex Driver\",\"licenseNumber\":\" \",\"available\":true}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.fieldErrors.licenseNumber").exists());
+    }
+
+    @Test
+    void allowsBlankOptionalServiceAreaAndCurrentLocation() throws Exception {
+        mockMvc.perform(post("/api/drivers")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"Optional Fields Driver\",\"licenseNumber\":\"OPTIONAL1\","
+                                + "\"available\":true,\"serviceArea\":\" \",\"currentLocation\":\"\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.serviceArea").value(" "))
+                .andExpect(jsonPath("$.currentLocation").value(""));
+    }
+
+    private void saveDriver(String name, String license, boolean available, String serviceArea) {
+        com.example.ridelink_driver_service.model.Driver driver =
+                new com.example.ridelink_driver_service.model.Driver(null, name, license, available);
+        driver.setServiceArea(serviceArea);
+        drivers.save(driver);
+    }
+
     private String driverJson(String name, String licenseNumber) throws Exception {
         return objectMapper.writeValueAsString(new DriverRequest(name, licenseNumber, true));
     }
 
     private String vehicleJson(String registrationNumber) throws Exception {
-        return objectMapper.writeValueAsString(new VehicleRequest(registrationNumber, "CAR", "Toyota Prius"));
+        return vehicleJson(registrationNumber, "CAR", "Toyota Prius");
+    }
+
+    private String vehicleJson(String registrationNumber, String vehicleType, String model) throws Exception {
+        return objectMapper.writeValueAsString(new VehicleRequest(registrationNumber, vehicleType, model));
     }
 
     private record DriverRequest(String name, String licenseNumber, boolean available) { }

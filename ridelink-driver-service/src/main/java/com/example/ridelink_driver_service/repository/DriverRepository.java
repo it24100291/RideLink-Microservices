@@ -9,6 +9,9 @@ public class DriverRepository {
     public Driver save(Driver driver) { return store.saveAndFlush(driver); }
     public List<Driver> findAll() { return store.findAll(); }
     public List<Driver> findAvailable() { return store.findByAvailableTrueAndReservationIdIsNullOrderByIdAsc(); }
+    public List<Driver> findAvailable(String serviceArea) {
+        return store.findByAvailableTrueAndReservationIdIsNullAndServiceAreaIgnoreCaseOrderByIdAsc(serviceArea);
+    }
     public Driver findById(Long id) { return store.findById(id).orElse(null); }
     public Driver findByLicenseNumber(String license) { return store.findByLicenseNumberIgnoreCase(license).orElse(null); }
     public Driver findByAccountId(Long id) { return store.findByAccountId(id).orElse(null); }
