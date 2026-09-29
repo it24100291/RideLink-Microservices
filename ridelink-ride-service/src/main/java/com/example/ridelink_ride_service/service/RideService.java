@@ -2,6 +2,7 @@ package com.example.ridelink_ride_service.service;
 import com.example.ridelink_ride_service.client.DriverGateway;
 import com.example.ridelink_ride_service.client.PaymentGateway;
 import com.example.ridelink_ride_service.model.Ride;
+import com.example.ridelink_ride_service.model.RideStatus;
 import com.example.ridelink_ride_service.repository.RideRepository;
 import com.example.ridelink_ride_service.security.Identity;
 import org.springframework.stereotype.Service;
@@ -26,7 +27,7 @@ public class RideService {
         if(existing!=null) {
             if(!existing.getPickup().equals(pickup.trim()) || !existing.getDestination().equals(destination.trim()))
                 throw new ResponseStatusException(HttpStatus.CONFLICT,"Booking key was already used with different details");
-            if("CANCELLED".equals(existing.getStatus()) || "PENDING".equals(existing.getStatus()))
+            if(existing.getStatus() == RideStatus.CANCELLED || existing.getStatus() == RideStatus.REQUESTED)
                 throw new ResponseStatusException(HttpStatus.CONFLICT,"Booking was cancelled or is recovering. Retry with a new key.");
             return existing;
         }
@@ -34,10 +35,10 @@ public class RideService {
         try {
             var driver=drivers.reserve(reservation);
             ride.setDriverId(driver.driverId()); ride.setDriverAccountId(driver.driverAccountId());
-            ride.setStatus("CONFIRMED");
+            ride.setStatus(RideStatus.ASSIGNED);
             return rides.saveAndFlush(ride);
         } catch(RuntimeException ex) {
-            ride.setStatus("CANCELLED"); ride.setReleasePending(true);
+            ride.setStatus(RideStatus.CANCELLED); ride.setReleasePending(true);
             rides.saveAndFlush(ride);
             release(ride);
             throw ex;
@@ -61,26 +62,30 @@ public class RideService {
     }
     public synchronized Ride transition(Long id,Identity identity,String action) {
         Ride ride=get(id,identity);
-        String status=ride.getStatus();
+        RideStatus status=ride.getStatus();
         switch(action) {
+            case "accept" -> {
+                identity.require("DRIVER");
+                requireStatus(status, RideStatus.ASSIGNED);
+                requireAssignedDriver(identity, ride);
+                ride.setStatus(RideStatus.ACCEPTED);
+            }
             case "start" -> {
                 identity.require("DRIVER");
-                if(!identity.accountId().equals(ride.getDriverAccountId())) forbidden();
-                if("IN_PROGRESS".equals(status)) return ride;
-                requireStatus(status,"CONFIRMED");
-                ride.setStatus("IN_PROGRESS");
+                requireStatus(status, RideStatus.ACCEPTED);
+                requireAssignedDriver(identity, ride);
+                ride.setStatus(RideStatus.IN_PROGRESS);
             }
             case "complete" -> {
                 identity.require("DRIVER");
-                if(!identity.accountId().equals(ride.getDriverAccountId())) forbidden();
-                if("COMPLETED".equals(status)) { release(ride); return ride; }
-                requireStatus(status,"IN_PROGRESS");
-                ride.setStatus("COMPLETED"); ride.setReleasePending(true);
+                requireStatus(status, RideStatus.IN_PROGRESS);
+                requireAssignedDriver(identity, ride);
+                ride.setStatus(RideStatus.COMPLETED); ride.setReleasePending(true);
             }
             case "cancel" -> {
-                if("CANCELLED".equals(status)) { release(ride); return ride; }
-                requireStatus(status,"CONFIRMED");
-                ride.setStatus("CANCELLED"); ride.setReleasePending(true);
+                if (!"ADMIN".equals(identity.role())) identity.require("PASSENGER");
+                requireOneOf(status, RideStatus.REQUESTED, RideStatus.ASSIGNED, RideStatus.ACCEPTED);
+                ride.setStatus(RideStatus.CANCELLED); ride.setReleasePending(true);
             }
             default -> throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"Unknown ride action");
         }
@@ -92,7 +97,7 @@ public class RideService {
             Integer durationMinutes, PaymentGateway.PaymentMethod method) {
         Ride ride = get(id, identity);
         identity.require("PASSENGER");
-        if (!"COMPLETED".equals(ride.getStatus()))
+        if (ride.getStatus() != RideStatus.COMPLETED)
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Payment can be created only for a completed ride");
         return payments.create(ride.getId(), distanceKm, durationMinutes, method);
     }
@@ -103,7 +108,7 @@ public class RideService {
     public PaymentGateway.Payment updatePaymentStatus(Long id, Identity identity, PaymentGateway.PaymentStatus status) {
         Ride ride = get(id, identity);
         identity.require("PASSENGER");
-        if (!"COMPLETED".equals(ride.getStatus()))
+        if (ride.getStatus() != RideStatus.COMPLETED)
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Payment status is available only for a completed ride");
         return payments.updateStatus(ride.getId(), status);
     }
@@ -111,9 +116,22 @@ public class RideService {
         Ride ride = get(id, identity);
         return payments.getReceipt(ride.getId());
     }
-    private void forbidden(){throw new ResponseStatusException(HttpStatus.FORBIDDEN,"Only the assigned driver can perform this action");}
-    private void requireStatus(String actual,String expected) {
-        if(!actual.equals(expected)) throw new ResponseStatusException(HttpStatus.CONFLICT,"Ride must be "+expected+" for this action");
+    private void requireAssignedDriver(Identity identity, Ride ride) {
+        if (!identity.accountId().equals(ride.getDriverAccountId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only the assigned driver can perform this action");
+        }
+    }
+    private void requireStatus(RideStatus actual, RideStatus expected) {
+        if (actual != expected) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Ride must be " + expected + " for this action; current status is " + actual);
+        }
+    }
+    private void requireOneOf(RideStatus actual, RideStatus... allowed) {
+        if (Arrays.stream(allowed).noneMatch(status -> status == actual)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Ride cannot be cancelled from status " + actual);
+        }
     }
     private void release(Ride ride) {
         if(!ride.isReleasePending()) return;
@@ -126,11 +144,11 @@ public class RideService {
     }
     @Scheduled(fixedDelayString="${ride.recovery-delay-ms:5000}")
     public synchronized void recover() {
-        for(Ride ride:rides.findByReleasePendingTrueOrStatus("PENDING")) {
+        for(Ride ride:rides.findByReleasePendingTrueOrStatusIn(List.of("REQUESTED", "PENDING"))) {
             try {
-                if("PENDING".equals(ride.getStatus())) {
+                if(ride.getStatus() == RideStatus.REQUESTED) {
                     if(ride.getCreatedAt().isAfter(Instant.now().minusSeconds(30))) continue;
-                    ride.setStatus("CANCELLED"); ride.setReleasePending(true); rides.saveAndFlush(ride);
+                    ride.setStatus(RideStatus.CANCELLED); ride.setReleasePending(true); rides.saveAndFlush(ride);
                 }
                 release(ride);
             } catch(RuntimeException ex) {

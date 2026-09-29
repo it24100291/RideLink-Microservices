@@ -4,7 +4,7 @@ Ride and Payment remain separate Spring Boot applications with separate database
 
 ## Flow
 
-1. Complete the ride using the existing Ride lifecycle.
+1. The assigned driver accepts the ride, starts it, and completes it using the existing Ride lifecycle.
 2. Submit the final distance and duration to `POST /api/rides/{rideId}/payment`. Ride passes its persisted ride ID to Payment's `POST /api/payments`; Payment calculates the fare and stores one `PENDING` payment for that ride.
 3. Read that payment from `GET /api/rides/{rideId}/payment`.
 4. Simulate a result with `PUT /api/rides/{rideId}/payment/status` and `{"status":"SUCCESS"}` or `{"status":"FAILED"}`.

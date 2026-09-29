@@ -6,5 +6,5 @@ public interface RideRepository extends JpaRepository<Ride,Long> {
     Optional<Ride> findByReservationId(String id);
     List<Ride> findByPassengerAccountIdOrderByIdDesc(Long id);
     List<Ride> findByDriverAccountIdOrderByIdDesc(Long id);
-    List<Ride> findByReleasePendingTrueOrStatus(String status);
+    List<Ride> findByReleasePendingTrueOrStatusIn(Collection<String> statuses);
 }

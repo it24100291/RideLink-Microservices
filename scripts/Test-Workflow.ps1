@@ -42,15 +42,18 @@ $available = @(Api GET "$driverUrl/api/drivers/available" $null $passengerToken)
 if ($available.Count -ne 1) { throw 'Run this deterministic smoke test using a fresh RIDELINK_HOME with no other available drivers.' }
 $key = [guid]::NewGuid().ToString()
 $ride = Api POST "$rideUrl/api/rides" @{pickup='Fort';destination='SLIIT';passengerAccountId=999;status='COMPLETED'} $passengerToken $key
-Assert-Equal $ride.status 'CONFIRMED' 'Booking status'
+Assert-Equal $ride.status 'ASSIGNED' 'Booking status'
 Assert-Equal $ride.passengerAccountId $passengerAccount.id 'Passenger identity'
 Assert-Equal $ride.driverAccountId $driverAccount.id 'Assigned driver identity'
 $retry = Api POST "$rideUrl/api/rides" @{pickup='Fort';destination='SLIIT'} $passengerToken $key
 Assert-Equal $retry.id $ride.id 'Idempotent booking'
 Expect-Status 403 { Api GET "$rideUrl/api/rides/$($ride.id)" $null $otherToken }
 Expect-Status 403 { Api PATCH "$rideUrl/api/rides/$($ride.id)/start" $null $passengerToken }
+Expect-Status 409 { Api PATCH "$rideUrl/api/rides/$($ride.id)/start" $null $driverToken }
 Expect-Status 409 { Api POST "$rideUrl/api/rides" @{pickup='A';destination='B'} $otherToken ([guid]::NewGuid().ToString()) }
 Expect-Status 409 { Api PATCH "$driverUrl/api/drivers/$($driver.id)/availability?available=true" $null $driverToken }
+$accepted = Api PATCH "$rideUrl/api/rides/$($ride.id)/accept" $null $driverToken
+Assert-Equal $accepted.status 'ACCEPTED' 'Ride acceptance'
 $started = Api PATCH "$rideUrl/api/rides/$($ride.id)/start" $null $driverToken
 Assert-Equal $started.status 'IN_PROGRESS' 'Ride start'
 $completed = Api PATCH "$rideUrl/api/rides/$($ride.id)/complete" $null $driverToken
