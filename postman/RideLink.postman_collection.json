@@ -38,7 +38,15 @@
                                                                      }
                                                                  ],
                                                       "url":  {
-                                                                  "raw":  "{{accountUrl}}/api/accounts/register"
+                                                                  "raw":  "{{accountUrl}}/api/accounts/register",
+                                                                  "host":  [
+                                                                               "{{accountUrl}}"
+                                                                           ],
+                                                                  "path":  [
+                                                                               "api",
+                                                                               "accounts",
+                                                                               "register"
+                                                                           ]
                                                               },
                                                       "description":  "Creates a fresh fictional passenger account on every run.",
                                                       "body":  {
@@ -94,7 +102,15 @@
                                                                      }
                                                                  ],
                                                       "url":  {
-                                                                  "raw":  "{{accountUrl}}/api/accounts/register"
+                                                                  "raw":  "{{accountUrl}}/api/accounts/register",
+                                                                  "host":  [
+                                                                               "{{accountUrl}}"
+                                                                           ],
+                                                                  "path":  [
+                                                                               "api",
+                                                                               "accounts",
+                                                                               "register"
+                                                                           ]
                                                               },
                                                       "description":  "",
                                                       "body":  {
@@ -146,7 +162,15 @@
                                                                      }
                                                                  ],
                                                       "url":  {
-                                                                  "raw":  "{{accountUrl}}/api/accounts/register"
+                                                                  "raw":  "{{accountUrl}}/api/accounts/register",
+                                                                  "host":  [
+                                                                               "{{accountUrl}}"
+                                                                           ],
+                                                                  "path":  [
+                                                                               "api",
+                                                                               "accounts",
+                                                                               "register"
+                                                                           ]
                                                               },
                                                       "description":  "",
                                                       "body":  {
@@ -197,7 +221,15 @@
                                                                      }
                                                                  ],
                                                       "url":  {
-                                                                  "raw":  "{{accountUrl}}/api/auth/login"
+                                                                  "raw":  "{{accountUrl}}/api/auth/login",
+                                                                  "host":  [
+                                                                               "{{accountUrl}}"
+                                                                           ],
+                                                                  "path":  [
+                                                                               "api",
+                                                                               "auth",
+                                                                               "login"
+                                                                           ]
                                                               },
                                                       "description":  "",
                                                       "body":  {
@@ -240,7 +272,15 @@
                                                                      }
                                                                  ],
                                                       "url":  {
-                                                                  "raw":  "{{accountUrl}}/api/auth/login"
+                                                                  "raw":  "{{accountUrl}}/api/auth/login",
+                                                                  "host":  [
+                                                                               "{{accountUrl}}"
+                                                                           ],
+                                                                  "path":  [
+                                                                               "api",
+                                                                               "auth",
+                                                                               "login"
+                                                                           ]
                                                               },
                                                       "description":  "",
                                                       "body":  {
@@ -283,7 +323,15 @@
                                                                      }
                                                                  ],
                                                       "url":  {
-                                                                  "raw":  "{{accountUrl}}/api/auth/login"
+                                                                  "raw":  "{{accountUrl}}/api/auth/login",
+                                                                  "host":  [
+                                                                               "{{accountUrl}}"
+                                                                           ],
+                                                                  "path":  [
+                                                                               "api",
+                                                                               "auth",
+                                                                               "login"
+                                                                           ]
                                                               },
                                                       "description":  "",
                                                       "body":  {
@@ -321,7 +369,15 @@
                                                                      }
                                                                  ],
                                                       "url":  {
-                                                                  "raw":  "{{accountUrl}}/api/accounts/me"
+                                                                  "raw":  "{{accountUrl}}/api/accounts/me",
+                                                                  "host":  [
+                                                                               "{{accountUrl}}"
+                                                                           ],
+                                                                  "path":  [
+                                                                               "api",
+                                                                               "accounts",
+                                                                               "me"
+                                                                           ]
                                                               },
                                                       "description":  "Authenticated account/profile operation. Confirms the passenger JWT is valid.",
                                                       "auth":  {
@@ -367,7 +423,14 @@
                                                                      }
                                                                  ],
                                                       "url":  {
-                                                                  "raw":  "{{driverUrl}}/api/drivers"
+                                                                  "raw":  "{{driverUrl}}/api/drivers",
+                                                                  "host":  [
+                                                                               "{{driverUrl}}"
+                                                                           ],
+                                                                  "path":  [
+                                                                               "api",
+                                                                               "drivers"
+                                                                           ]
                                                               },
                                                       "description":  "accountId is taken from the authenticated Driver account, not the request body.",
                                                       "auth":  {
@@ -420,7 +483,16 @@
                                                                      }
                                                                  ],
                                                       "url":  {
-                                                                  "raw":  "{{driverUrl}}/api/drivers/{{driverId}}/vehicles"
+                                                                  "raw":  "{{driverUrl}}/api/drivers/{{driverId}}/vehicles",
+                                                                  "host":  [
+                                                                               "{{driverUrl}}"
+                                                                           ],
+                                                                  "path":  [
+                                                                               "api",
+                                                                               "drivers",
+                                                                               "{{driverId}}",
+                                                                               "vehicles"
+                                                                           ]
                                                               },
                                                       "description":  "",
                                                       "auth":  {
@@ -468,7 +540,23 @@
                                                                      }
                                                                  ],
                                                       "url":  {
-                                                                  "raw":  "{{driverUrl}}/api/drivers/{{driverId}}/availability?available=false"
+                                                                  "raw":  "{{driverUrl}}/api/drivers/{{driverId}}/availability?available=false",
+                                                                  "host":  [
+                                                                               "{{driverUrl}}"
+                                                                           ],
+                                                                  "path":  [
+                                                                               "api",
+                                                                               "drivers",
+                                                                               "{{driverId}}",
+                                                                               "availability"
+                                                                           ],
+                                                                  "query":  [
+                                                                                {
+                                                                                    "key":  "available",
+                                                                                    "value":  "false",
+                                                                                    "disabled":  false
+                                                                                }
+                                                                            ]
                                                               },
                                                       "description":  "",
                                                       "auth":  {
@@ -505,7 +593,23 @@
                                                                      }
                                                                  ],
                                                       "url":  {
-                                                                  "raw":  "{{driverUrl}}/api/drivers/{{driverId}}/availability?available=true"
+                                                                  "raw":  "{{driverUrl}}/api/drivers/{{driverId}}/availability?available=true",
+                                                                  "host":  [
+                                                                               "{{driverUrl}}"
+                                                                           ],
+                                                                  "path":  [
+                                                                               "api",
+                                                                               "drivers",
+                                                                               "{{driverId}}",
+                                                                               "availability"
+                                                                           ],
+                                                                  "query":  [
+                                                                                {
+                                                                                    "key":  "available",
+                                                                                    "value":  "true",
+                                                                                    "disabled":  false
+                                                                                }
+                                                                            ]
                                                               },
                                                       "description":  "",
                                                       "auth":  {
@@ -544,7 +648,15 @@
                                                                      }
                                                                  ],
                                                       "url":  {
-                                                                  "raw":  "{{driverUrl}}/api/drivers/available"
+                                                                  "raw":  "{{driverUrl}}/api/drivers/available",
+                                                                  "host":  [
+                                                                               "{{driverUrl}}"
+                                                                           ],
+                                                                  "path":  [
+                                                                               "api",
+                                                                               "drivers",
+                                                                               "available"
+                                                                           ]
                                                               },
                                                       "description":  "The Ride service reserves an available driver automatically when a booking is submitted.",
                                                       "auth":  {
@@ -598,7 +710,14 @@
                                                                      }
                                                                  ],
                                                       "url":  {
-                                                                  "raw":  "{{rideUrl}}/api/rides"
+                                                                  "raw":  "{{rideUrl}}/api/rides",
+                                                                  "host":  [
+                                                                               "{{rideUrl}}"
+                                                                           ],
+                                                                  "path":  [
+                                                                               "api",
+                                                                               "rides"
+                                                                           ]
                                                               },
                                                       "description":  "Ride is persisted as REQUESTED before Driver reservation; this synchronous endpoint returns after successful reservation as ASSIGNED.",
                                                       "auth":  {
@@ -648,7 +767,15 @@
                                                                      }
                                                                  ],
                                                       "url":  {
-                                                                  "raw":  "{{rideUrl}}/api/rides/{{rideId}}"
+                                                                  "raw":  "{{rideUrl}}/api/rides/{{rideId}}",
+                                                                  "host":  [
+                                                                               "{{rideUrl}}"
+                                                                           ],
+                                                                  "path":  [
+                                                                               "api",
+                                                                               "rides",
+                                                                               "{{rideId}}"
+                                                                           ]
                                                               },
                                                       "description":  "",
                                                       "auth":  {
@@ -687,7 +814,16 @@
                                                                      }
                                                                  ],
                                                       "url":  {
-                                                                  "raw":  "{{rideUrl}}/api/rides/{{rideId}}/accept"
+                                                                  "raw":  "{{rideUrl}}/api/rides/{{rideId}}/accept",
+                                                                  "host":  [
+                                                                               "{{rideUrl}}"
+                                                                           ],
+                                                                  "path":  [
+                                                                               "api",
+                                                                               "rides",
+                                                                               "{{rideId}}",
+                                                                               "accept"
+                                                                           ]
                                                               },
                                                       "description":  "",
                                                       "auth":  {
@@ -727,7 +863,16 @@
                                                                      }
                                                                  ],
                                                       "url":  {
-                                                                  "raw":  "{{rideUrl}}/api/rides/{{rideId}}/start"
+                                                                  "raw":  "{{rideUrl}}/api/rides/{{rideId}}/start",
+                                                                  "host":  [
+                                                                               "{{rideUrl}}"
+                                                                           ],
+                                                                  "path":  [
+                                                                               "api",
+                                                                               "rides",
+                                                                               "{{rideId}}",
+                                                                               "start"
+                                                                           ]
                                                               },
                                                       "description":  "",
                                                       "auth":  {
@@ -767,7 +912,16 @@
                                                                      }
                                                                  ],
                                                       "url":  {
-                                                                  "raw":  "{{rideUrl}}/api/rides/{{rideId}}/complete"
+                                                                  "raw":  "{{rideUrl}}/api/rides/{{rideId}}/complete",
+                                                                  "host":  [
+                                                                               "{{rideUrl}}"
+                                                                           ],
+                                                                  "path":  [
+                                                                               "api",
+                                                                               "rides",
+                                                                               "{{rideId}}",
+                                                                               "complete"
+                                                                           ]
                                                               },
                                                       "description":  "",
                                                       "auth":  {
@@ -821,7 +975,15 @@
                                                                      }
                                                                  ],
                                                       "url":  {
-                                                                  "raw":  "{{paymentUrl}}/api/fares/calculate"
+                                                                  "raw":  "{{paymentUrl}}/api/fares/calculate",
+                                                                  "host":  [
+                                                                               "{{paymentUrl}}"
+                                                                           ],
+                                                                  "path":  [
+                                                                               "api",
+                                                                               "fares",
+                                                                               "calculate"
+                                                                           ]
                                                               },
                                                       "description":  "Payment\u0027s Fare API is protected by its internal service key. Set paymentServiceKey locally from your local credential file to run this request. Do not export an environment containing the populated secret.",
                                                       "body":  {
@@ -871,7 +1033,16 @@
                                                                      }
                                                                  ],
                                                       "url":  {
-                                                                  "raw":  "{{rideUrl}}/api/rides/{{rideId}}/payment"
+                                                                  "raw":  "{{rideUrl}}/api/rides/{{rideId}}/payment",
+                                                                  "host":  [
+                                                                               "{{rideUrl}}"
+                                                                           ],
+                                                                  "path":  [
+                                                                               "api",
+                                                                               "rides",
+                                                                               "{{rideId}}",
+                                                                               "payment"
+                                                                           ]
                                                               },
                                                       "description":  "User-facing payment operation through Ride. The internal Payment key is added by Ride\u0027s PaymentClient.",
                                                       "auth":  {
@@ -921,7 +1092,16 @@
                                                                      }
                                                                  ],
                                                       "url":  {
-                                                                  "raw":  "{{rideUrl}}/api/rides/{{rideId}}/payment"
+                                                                  "raw":  "{{rideUrl}}/api/rides/{{rideId}}/payment",
+                                                                  "host":  [
+                                                                               "{{rideUrl}}"
+                                                                           ],
+                                                                  "path":  [
+                                                                               "api",
+                                                                               "rides",
+                                                                               "{{rideId}}",
+                                                                               "payment"
+                                                                           ]
                                                               },
                                                       "description":  "",
                                                       "auth":  {
@@ -965,7 +1145,17 @@
                                                                      }
                                                                  ],
                                                       "url":  {
-                                                                  "raw":  "{{rideUrl}}/api/rides/{{rideId}}/payment/status"
+                                                                  "raw":  "{{rideUrl}}/api/rides/{{rideId}}/payment/status",
+                                                                  "host":  [
+                                                                               "{{rideUrl}}"
+                                                                           ],
+                                                                  "path":  [
+                                                                               "api",
+                                                                               "rides",
+                                                                               "{{rideId}}",
+                                                                               "payment",
+                                                                               "status"
+                                                                           ]
                                                               },
                                                       "description":  "",
                                                       "auth":  {
@@ -1013,7 +1203,17 @@
                                                                      }
                                                                  ],
                                                       "url":  {
-                                                                  "raw":  "{{rideUrl}}/api/rides/{{rideId}}/payment/receipt"
+                                                                  "raw":  "{{rideUrl}}/api/rides/{{rideId}}/payment/receipt",
+                                                                  "host":  [
+                                                                               "{{rideUrl}}"
+                                                                           ],
+                                                                  "path":  [
+                                                                               "api",
+                                                                               "rides",
+                                                                               "{{rideId}}",
+                                                                               "payment",
+                                                                               "receipt"
+                                                                           ]
                                                               },
                                                       "description":  "",
                                                       "auth":  {
@@ -1067,7 +1267,14 @@
                                                                      }
                                                                  ],
                                                       "url":  {
-                                                                  "raw":  "{{rideUrl}}/api/rides"
+                                                                  "raw":  "{{rideUrl}}/api/rides",
+                                                                  "host":  [
+                                                                               "{{rideUrl}}"
+                                                                           ],
+                                                                  "path":  [
+                                                                               "api",
+                                                                               "rides"
+                                                                           ]
                                                               },
                                                       "description":  "Creates an additional assigned ride so authorization and pre-completion negative cases do not disrupt the main lifecycle demo.",
                                                       "auth":  {
@@ -1116,7 +1323,15 @@
                                                                      }
                                                                  ],
                                                       "url":  {
-                                                                  "raw":  "{{rideUrl}}/api/rides/{{negativeRideId}}"
+                                                                  "raw":  "{{rideUrl}}/api/rides/{{negativeRideId}}",
+                                                                  "host":  [
+                                                                               "{{rideUrl}}"
+                                                                           ],
+                                                                  "path":  [
+                                                                               "api",
+                                                                               "rides",
+                                                                               "{{negativeRideId}}"
+                                                                           ]
                                                               },
                                                       "description":  "No Authorization header. Expected 401."
                                                   },
@@ -1151,7 +1366,14 @@
                                                                      }
                                                                  ],
                                                       "url":  {
-                                                                  "raw":  "{{rideUrl}}/api/rides"
+                                                                  "raw":  "{{rideUrl}}/api/rides",
+                                                                  "host":  [
+                                                                               "{{rideUrl}}"
+                                                                           ],
+                                                                  "path":  [
+                                                                               "api",
+                                                                               "rides"
+                                                                           ]
                                                               },
                                                       "description":  "",
                                                       "auth":  {
@@ -1197,7 +1419,16 @@
                                                                      }
                                                                  ],
                                                       "url":  {
-                                                                  "raw":  "{{rideUrl}}/api/rides/{{negativeRideId}}/accept"
+                                                                  "raw":  "{{rideUrl}}/api/rides/{{negativeRideId}}/accept",
+                                                                  "host":  [
+                                                                               "{{rideUrl}}"
+                                                                           ],
+                                                                  "path":  [
+                                                                               "api",
+                                                                               "rides",
+                                                                               "{{negativeRideId}}",
+                                                                               "accept"
+                                                                           ]
                                                               },
                                                       "description":  "",
                                                       "auth":  {
@@ -1234,7 +1465,16 @@
                                                                      }
                                                                  ],
                                                       "url":  {
-                                                                  "raw":  "{{rideUrl}}/api/rides/{{negativeRideId}}/start"
+                                                                  "raw":  "{{rideUrl}}/api/rides/{{negativeRideId}}/start",
+                                                                  "host":  [
+                                                                               "{{rideUrl}}"
+                                                                           ],
+                                                                  "path":  [
+                                                                               "api",
+                                                                               "rides",
+                                                                               "{{negativeRideId}}",
+                                                                               "start"
+                                                                           ]
                                                               },
                                                       "description":  "",
                                                       "auth":  {
@@ -1275,7 +1515,16 @@
                                                                      }
                                                                  ],
                                                       "url":  {
-                                                                  "raw":  "{{rideUrl}}/api/rides/{{negativeRideId}}/payment"
+                                                                  "raw":  "{{rideUrl}}/api/rides/{{negativeRideId}}/payment",
+                                                                  "host":  [
+                                                                               "{{rideUrl}}"
+                                                                           ],
+                                                                  "path":  [
+                                                                               "api",
+                                                                               "rides",
+                                                                               "{{negativeRideId}}",
+                                                                               "payment"
+                                                                           ]
                                                               },
                                                       "description":  "",
                                                       "auth":  {
@@ -1321,7 +1570,16 @@
                                                                      }
                                                                  ],
                                                       "url":  {
-                                                                  "raw":  "{{rideUrl}}/api/rides/{{negativeRideId}}/payment"
+                                                                  "raw":  "{{rideUrl}}/api/rides/{{negativeRideId}}/payment",
+                                                                  "host":  [
+                                                                               "{{rideUrl}}"
+                                                                           ],
+                                                                  "path":  [
+                                                                               "api",
+                                                                               "rides",
+                                                                               "{{negativeRideId}}",
+                                                                               "payment"
+                                                                           ]
                                                               },
                                                       "description":  "",
                                                       "auth":  {
@@ -1362,7 +1620,16 @@
                                                                      }
                                                                  ],
                                                       "url":  {
-                                                                  "raw":  "{{rideUrl}}/api/rides/{{rideId}}/payment"
+                                                                  "raw":  "{{rideUrl}}/api/rides/{{rideId}}/payment",
+                                                                  "host":  [
+                                                                               "{{rideUrl}}"
+                                                                           ],
+                                                                  "path":  [
+                                                                               "api",
+                                                                               "rides",
+                                                                               "{{rideId}}",
+                                                                               "payment"
+                                                                           ]
                                                               },
                                                       "description":  "Run after Payment - Create Payment for Completed Ride. Payment Service enforces one payment per ride; the Ride proxy returns 409.",
                                                       "auth":  {
@@ -1408,7 +1675,16 @@
                                                                      }
                                                                  ],
                                                       "url":  {
-                                                                  "raw":  "{{rideUrl}}/api/rides/{{negativeRideId}}/cancel"
+                                                                  "raw":  "{{rideUrl}}/api/rides/{{negativeRideId}}/cancel",
+                                                                  "host":  [
+                                                                               "{{rideUrl}}"
+                                                                           ],
+                                                                  "path":  [
+                                                                               "api",
+                                                                               "rides",
+                                                                               "{{negativeRideId}}",
+                                                                               "cancel"
+                                                                           ]
                                                               },
                                                       "description":  "",
                                                       "auth":  {
