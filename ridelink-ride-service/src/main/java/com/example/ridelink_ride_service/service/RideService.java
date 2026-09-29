@@ -1,5 +1,6 @@
 package com.example.ridelink_ride_service.service;
 import com.example.ridelink_ride_service.client.DriverGateway;
+import com.example.ridelink_ride_service.client.PaymentGateway;
 import com.example.ridelink_ride_service.model.Ride;
 import com.example.ridelink_ride_service.repository.RideRepository;
 import com.example.ridelink_ride_service.security.Identity;
@@ -16,7 +17,8 @@ import java.util.*;
 public class RideService {
     private final RideRepository rides;
     private final DriverGateway drivers;
-    public RideService(RideRepository rides,DriverGateway drivers){this.rides=rides;this.drivers=drivers;}
+    private final PaymentGateway payments;
+    public RideService(RideRepository rides,DriverGateway drivers,PaymentGateway payments){this.rides=rides;this.drivers=drivers;this.payments=payments;}
     public synchronized Ride create(Identity passenger,UUID key,String pickup,String destination) {
         passenger.require("PASSENGER");
         String reservation=UUID.nameUUIDFromBytes((passenger.accountId()+":"+key).getBytes(StandardCharsets.UTF_8)).toString();
@@ -85,6 +87,29 @@ public class RideService {
         rides.saveAndFlush(ride);
         release(ride);
         return ride;
+    }
+    public PaymentGateway.Payment createPayment(Long id, Identity identity, java.math.BigDecimal distanceKm,
+            Integer durationMinutes, PaymentGateway.PaymentMethod method) {
+        Ride ride = get(id, identity);
+        identity.require("PASSENGER");
+        if (!"COMPLETED".equals(ride.getStatus()))
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Payment can be created only for a completed ride");
+        return payments.create(ride.getId(), distanceKm, durationMinutes, method);
+    }
+    public PaymentGateway.Payment getPayment(Long id, Identity identity) {
+        Ride ride = get(id, identity);
+        return payments.get(ride.getId());
+    }
+    public PaymentGateway.Payment updatePaymentStatus(Long id, Identity identity, PaymentGateway.PaymentStatus status) {
+        Ride ride = get(id, identity);
+        identity.require("PASSENGER");
+        if (!"COMPLETED".equals(ride.getStatus()))
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Payment status is available only for a completed ride");
+        return payments.updateStatus(ride.getId(), status);
+    }
+    public PaymentGateway.Receipt getReceipt(Long id, Identity identity) {
+        Ride ride = get(id, identity);
+        return payments.getReceipt(ride.getId());
     }
     private void forbidden(){throw new ResponseStatusException(HttpStatus.FORBIDDEN,"Only the assigned driver can perform this action");}
     private void requireStatus(String actual,String expected) {

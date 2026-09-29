@@ -29,6 +29,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -79,7 +80,7 @@ class PaymentServiceTests {
 
     @Test
     void createsPaymentWithPendingStatus() {
-        when(paymentRepository.save(any(Payment.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(paymentRepository.saveAndFlush(any(Payment.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         var response = paymentService.createPayment(new PaymentRequest(
                 1L, new BigDecimal("10"), 20, PaymentMethod.CARD));
@@ -87,7 +88,17 @@ class PaymentServiceTests {
         assertEquals(PaymentStatus.PENDING, response.status());
         assertEquals(new BigDecimal("22.00"), response.amount());
         assertTrue(response.referenceId() != null && !response.referenceId().isBlank());
-        verify(paymentRepository).save(any(Payment.class));
+        verify(paymentRepository).saveAndFlush(any(Payment.class));
+    }
+
+    @Test
+    void rejectsSecondPaymentForSameRide() {
+        when(paymentRepository.findByRideId(1L)).thenReturn(Optional.of(payment(PaymentStatus.PENDING)));
+
+        assertThrows(InvalidPaymentException.class, () -> paymentService.createPayment(new PaymentRequest(
+                1L, new BigDecimal("10"), 20, PaymentMethod.CARD)));
+
+        verify(paymentRepository, never()).saveAndFlush(any(Payment.class));
     }
 
     @Test

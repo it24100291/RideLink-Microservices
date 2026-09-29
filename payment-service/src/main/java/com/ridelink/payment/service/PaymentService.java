@@ -52,11 +52,14 @@ public class PaymentService {
 
     @Transactional
     public PaymentResponse createPayment(PaymentRequest request) {
+        if (paymentRepository.findByRideId(request.rideId()).isPresent()) {
+            throw new InvalidPaymentException("A payment already exists for ride %d".formatted(request.rideId()));
+        }
         FareCalculationResponse fare = calculateFare(new FareCalculationRequest(
                 request.rideId(), request.distanceKm(), request.durationMinutes()));
         Payment payment = new Payment(request.rideId(), fare.totalFare(),
                 request.paymentMethod(), PaymentStatus.PENDING, UUID.randomUUID().toString());
-        return PaymentResponse.from(paymentRepository.save(payment));
+        return PaymentResponse.from(paymentRepository.saveAndFlush(payment));
     }
 
     @Transactional(readOnly = true)

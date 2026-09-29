@@ -8,9 +8,12 @@ import org.springframework.data.repository.query.Param;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Optional;
 
 public interface PaymentRepository extends JpaRepository<Payment, Long> {
     List<Payment> findByRideIdOrderByCreatedAtDesc(Long rideId);
+
+    Optional<Payment> findByRideId(Long rideId);
 
     long countByStatus(PaymentStatus status);
 

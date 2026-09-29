@@ -1,6 +1,7 @@
 package com.ridelink.payment.exception;
 
 import jakarta.validation.ConstraintViolationException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -23,6 +24,11 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(InvalidPaymentException.class)
     ResponseEntity<ApiError> handleInvalidPayment(InvalidPaymentException exception) {
         return response(HttpStatus.CONFLICT, exception.getMessage(), Map.of());
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    ResponseEntity<ApiError> handleDuplicate(DataIntegrityViolationException exception) {
+        return response(HttpStatus.CONFLICT, "A payment already exists for this ride", Map.of());
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

@@ -1,9 +1,9 @@
 $ErrorActionPreference = 'Stop'
 $script:RepoRoot = Split-Path $PSScriptRoot -Parent
 $script:LocalHome = if ($env:RIDELINK_HOME) { [IO.Path]::GetFullPath($env:RIDELINK_HOME) } else { Join-Path $env:USERPROFILE '.ridelink-connected' }
-$script:Modules = @{ Account = 'account-service'; Driver = 'ridelink-driver-service'; Ride = 'ridelink-ride-service' }
-$script:Ports = @{ Account = 8083; Driver = 8081; Ride = 8082 }
-foreach ($serviceName in @('Account','Driver','Ride')) {
+$script:Modules = @{ Account = 'account-service'; Driver = 'ridelink-driver-service'; Ride = 'ridelink-ride-service'; Payment = 'payment-service' }
+$script:Ports = @{ Account = 8083; Driver = 8081; Ride = 8082; Payment = 8084 }
+foreach ($serviceName in @('Account','Driver','Ride','Payment')) {
     $configuredPort = [Environment]::GetEnvironmentVariable("RIDELINK_$($serviceName.ToUpper())_PORT")
     if ($configuredPort) { $script:Ports[$serviceName] = [int]$configuredPort }
 }
@@ -37,6 +37,7 @@ function Set-ServiceEnvironment([string]$Service) {
         RIDE_SERVICE_KEY = [IO.File]::ReadAllText((Join-Path $script:LocalHome 'ride-service.key')).Trim()
         ACCOUNT_SERVICE_URL = "http://127.0.0.1:$($script:Ports.Account)"
         DRIVER_SERVICE_URL = "http://127.0.0.1:$($script:Ports.Driver)"
+        PAYMENT_SERVICE_URL = "http://127.0.0.1:$($script:Ports.Payment)"
         ACCOUNT_JWT_PRIVATE_KEY = $null
         ACCOUNT_JWT_PUBLIC_KEY = $null
         SPRING_PROFILES_ACTIVE = $null
@@ -68,10 +69,11 @@ function Get-ServiceArguments([string]$Service, [string]$Mode) {
     return $arguments
 }
 function Wait-Service([string]$Service, $Process) {
+    $healthPath = if ($Service -eq 'Payment') { '/actuator/health' } else { '/health' }
     for ($i=0; $i -lt 120; $i++) {
         if ($Process.HasExited) { throw "$Service exited. See logs in $script:LocalHome/logs." }
         try {
-            $response = Invoke-WebRequest -UseBasicParsing -Uri "http://127.0.0.1:$($script:Ports[$Service])/health" -TimeoutSec 1
+            $response = Invoke-WebRequest -UseBasicParsing -Uri "http://127.0.0.1:$($script:Ports[$Service])$healthPath" -TimeoutSec 1
             if ($response.StatusCode -eq 200) { return }
         } catch { }
         Start-Sleep -Milliseconds 500
