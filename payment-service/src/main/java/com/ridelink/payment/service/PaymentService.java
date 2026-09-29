@@ -6,6 +6,8 @@ import com.ridelink.payment.dto.PaymentRequest;
 import com.ridelink.payment.dto.PaymentResponse;
 import com.ridelink.payment.dto.PaymentSummaryResponse;
 import com.ridelink.payment.dto.ReceiptResponse;
+import com.ridelink.payment.client.RideDetails;
+import com.ridelink.payment.client.RideGateway;
 import com.ridelink.payment.entity.Payment;
 import com.ridelink.payment.entity.Receipt;
 import com.ridelink.payment.entity.PaymentStatus;
@@ -13,6 +15,7 @@ import com.ridelink.payment.exception.InvalidPaymentException;
 import com.ridelink.payment.exception.PaymentNotFoundException;
 import com.ridelink.payment.repository.PaymentRepository;
 import com.ridelink.payment.repository.ReceiptRepository;
+import com.ridelink.payment.security.Identity;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,16 +29,19 @@ import java.util.UUID;
 public class PaymentService {
     private final PaymentRepository paymentRepository;
     private final ReceiptRepository receiptRepository;
+    private final RideGateway rides;
     private final BigDecimal baseFare;
     private final BigDecimal perKmRate;
     private final BigDecimal perMinuteRate;
 
     public PaymentService(PaymentRepository paymentRepository, ReceiptRepository receiptRepository,
+                          RideGateway rides,
                           @Value("${payment.fare.base:2.00}") BigDecimal baseFare,
                           @Value("${payment.fare.per-km:1.50}") BigDecimal perKmRate,
                           @Value("${payment.fare.per-minute:0.25}") BigDecimal perMinuteRate) {
         this.paymentRepository = paymentRepository;
         this.receiptRepository = receiptRepository;
+        this.rides = rides;
         this.baseFare = baseFare;
         this.perKmRate = perKmRate;
         this.perMinuteRate = perMinuteRate;
@@ -51,40 +57,84 @@ public class PaymentService {
     }
 
     @Transactional
-    public PaymentResponse createPayment(PaymentRequest request) {
+    public PaymentResponse createPayment(PaymentRequest request, Identity identity, String authorization) {
+        identity.require("PASSENGER");
+        RideDetails ride = rides.getRide(request.rideId(), authorization);
+        if (ride == null || ride.id() == null || ride.passengerAccountId() == null || ride.status() == null) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE,
+                    "Ride Service returned incomplete ride data.");
+        }
+        if (!request.rideId().equals(ride.id())) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE,
+                    "Ride Service returned a mismatched ride.");
+        }
+        if (!identity.accountId().equals(ride.passengerAccountId())) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.FORBIDDEN,
+                    "This ride belongs to another account.");
+        }
+        if (!"COMPLETED".equals(ride.status())) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.CONFLICT,
+                    "Payment can be created only for a completed ride.");
+        }
+        if (paymentRepository.findByRideId(request.rideId()).isPresent()) {
+            throw new InvalidPaymentException("A payment already exists for this ride");
+        }
         FareCalculationResponse fare = calculateFare(new FareCalculationRequest(
                 request.rideId(), request.distanceKm(), request.durationMinutes()));
-        Payment payment = new Payment(request.rideId(), fare.totalFare(),
+        Payment payment = new Payment(request.rideId(), identity.accountId(), fare.totalFare(),
                 request.paymentMethod(), PaymentStatus.PENDING, UUID.randomUUID().toString());
-        return PaymentResponse.from(paymentRepository.save(payment));
+        return PaymentResponse.from(paymentRepository.saveAndFlush(payment));
     }
 
     @Transactional(readOnly = true)
-    public ReceiptResponse getReceipt(Long paymentId) {
-        findPayment(paymentId);
+    public ReceiptResponse getReceipt(Long paymentId, Identity identity) {
+        identity.requirePassengerOrAdmin();
+        Payment payment = findPayment(paymentId);
+        identity.requireOwnerOrAdmin(payment.getPassengerAccountId());
         return receiptRepository.findByPaymentId(paymentId).map(ReceiptResponse::from)
                 .orElseThrow(() -> new InvalidPaymentException(
                         "A receipt is available only after payment succeeds"));
     }
 
     @Transactional(readOnly = true)
-    public PaymentResponse getPayment(Long id) {
-        return PaymentResponse.from(findPayment(id));
+    public PaymentResponse getPayment(Long id, Identity identity) {
+        identity.requirePassengerOrAdmin();
+        Payment payment = findPayment(id);
+        identity.requireOwnerOrAdmin(payment.getPassengerAccountId());
+        return PaymentResponse.from(payment);
     }
 
     @Transactional(readOnly = true)
-    public List<PaymentResponse> getPaymentsForRide(Long rideId) {
-        return paymentRepository.findByRideIdOrderByCreatedAtDesc(rideId).stream()
+    public List<PaymentResponse> getPaymentsForRide(Long rideId, Identity identity) {
+        if ("ADMIN".equals(identity.role())) {
+            return paymentRepository.findByRideIdOrderByCreatedAtDesc(rideId).stream()
+                    .map(PaymentResponse::from).toList();
+        }
+        identity.require("PASSENGER");
+        List<Payment> allPayments = paymentRepository.findByRideIdOrderByCreatedAtDesc(rideId);
+        List<Payment> ownedPayments = allPayments.stream()
+                .filter(payment -> identity.accountId().equals(payment.getPassengerAccountId()))
+                .toList();
+        if (ownedPayments.isEmpty() && !allPayments.isEmpty()) {
+            identity.requireOwnerOrAdmin(allPayments.get(0).getPassengerAccountId());
+        }
+        return ownedPayments.stream()
                 .map(PaymentResponse::from).toList();
     }
 
     @Transactional(readOnly = true)
-    public List<PaymentResponse> getAllPayments() {
+    public List<PaymentResponse> getAllPayments(Identity identity) {
+        identity.require("ADMIN");
         return paymentRepository.findAll().stream().map(PaymentResponse::from).toList();
     }
 
     @Transactional(readOnly = true)
-    public PaymentSummaryResponse getPaymentSummary() {
+    public PaymentSummaryResponse getPaymentSummary(Identity identity) {
+        identity.require("ADMIN");
         return new PaymentSummaryResponse(
                 paymentRepository.count(),
                 paymentRepository.countByStatus(PaymentStatus.SUCCESS),
@@ -94,7 +144,8 @@ public class PaymentService {
     }
 
     @Transactional
-    public PaymentResponse updateStatus(Long id, PaymentStatus nextStatus) {
+    public PaymentResponse updateStatus(Long id, PaymentStatus nextStatus, Identity identity) {
+        identity.require("ADMIN");
         Payment payment = findPayment(id);
         boolean allowed = (payment.getStatus() == PaymentStatus.PENDING
                 && (nextStatus == PaymentStatus.SUCCESS || nextStatus == PaymentStatus.FAILED))

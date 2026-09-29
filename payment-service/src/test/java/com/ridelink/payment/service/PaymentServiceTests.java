@@ -3,6 +3,8 @@ package com.ridelink.payment.service;
 import com.ridelink.payment.dto.FareCalculationRequest;
 import com.ridelink.payment.dto.PaymentRequest;
 import com.ridelink.payment.dto.PaymentResponse;
+import com.ridelink.payment.client.RideDetails;
+import com.ridelink.payment.client.RideGateway;
 import com.ridelink.payment.entity.Payment;
 import com.ridelink.payment.entity.PaymentMethod;
 import com.ridelink.payment.entity.PaymentStatus;
@@ -11,6 +13,7 @@ import com.ridelink.payment.exception.InvalidPaymentException;
 import com.ridelink.payment.exception.PaymentNotFoundException;
 import com.ridelink.payment.repository.PaymentRepository;
 import com.ridelink.payment.repository.ReceiptRepository;
+import com.ridelink.payment.security.Identity;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
 import org.junit.jupiter.api.BeforeEach;
@@ -34,11 +37,17 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class PaymentServiceTests {
 
+    private static final Identity PASSENGER = new Identity(11L, "Passenger", "PASSENGER");
+    private static final Identity ADMIN = new Identity(99L, "Administrator", "ADMIN");
+
     @Mock
     private PaymentRepository paymentRepository;
 
     @Mock
     private ReceiptRepository receiptRepository;
+
+    @Mock
+    private RideGateway rideGateway;
 
     private PaymentService paymentService;
 
@@ -47,7 +56,7 @@ class PaymentServiceTests {
     @BeforeEach
     void setUp() {
         validator = Validation.buildDefaultValidatorFactory().getValidator();
-        paymentService = new PaymentService(paymentRepository, receiptRepository, new BigDecimal("2.00"),
+        paymentService = new PaymentService(paymentRepository, receiptRepository, rideGateway, new BigDecimal("2.00"),
                 new BigDecimal("1.50"), new BigDecimal("0.25"));
     }
 
@@ -79,15 +88,17 @@ class PaymentServiceTests {
 
     @Test
     void createsPaymentWithPendingStatus() {
-        when(paymentRepository.save(any(Payment.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(paymentRepository.saveAndFlush(any(Payment.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(rideGateway.getRide(1L, "Bearer token"))
+                .thenReturn(new RideDetails(1L, PASSENGER.accountId(), "COMPLETED"));
 
         var response = paymentService.createPayment(new PaymentRequest(
-                1L, new BigDecimal("10"), 20, PaymentMethod.CARD));
+                1L, new BigDecimal("10"), 20, PaymentMethod.CARD), PASSENGER, "Bearer token");
 
         assertEquals(PaymentStatus.PENDING, response.status());
         assertEquals(new BigDecimal("22.00"), response.amount());
         assertTrue(response.referenceId() != null && !response.referenceId().isBlank());
-        verify(paymentRepository).save(any(Payment.class));
+        verify(paymentRepository).saveAndFlush(any(Payment.class));
     }
 
     @Test
@@ -95,7 +106,7 @@ class PaymentServiceTests {
         Payment payment = payment(PaymentStatus.PENDING);
         when(paymentRepository.findById(7L)).thenReturn(Optional.of(payment));
 
-        var response = paymentService.getPayment(7L);
+        var response = paymentService.getPayment(7L, PASSENGER);
 
         assertEquals(7L, response.id());
         assertEquals(1L, response.rideId());
@@ -105,7 +116,7 @@ class PaymentServiceTests {
     void retrievesAllPayments() {
         when(paymentRepository.findAll()).thenReturn(List.of(payment(PaymentStatus.SUCCESS)));
 
-        var responses = paymentService.getAllPayments();
+        var responses = paymentService.getAllPayments(ADMIN);
 
         assertEquals(List.of(PaymentResponse.from(payment(PaymentStatus.SUCCESS))), responses);
     }
@@ -118,7 +129,7 @@ class PaymentServiceTests {
         when(paymentRepository.countByStatus(PaymentStatus.REFUNDED)).thenReturn(0L);
         when(paymentRepository.sumAmountByStatus(PaymentStatus.SUCCESS)).thenReturn(new BigDecimal("85.50"));
 
-        var summary = paymentService.getPaymentSummary();
+        var summary = paymentService.getPaymentSummary(ADMIN);
 
         assertEquals(5L, summary.totalPayments());
         assertEquals(4L, summary.successfulPayments());
@@ -132,7 +143,7 @@ class PaymentServiceTests {
     void missingPaymentRaisesNotFound() {
         when(paymentRepository.findById(99L)).thenReturn(Optional.empty());
 
-        assertThrows(PaymentNotFoundException.class, () -> paymentService.getPayment(99L));
+        assertThrows(PaymentNotFoundException.class, () -> paymentService.getPayment(99L, PASSENGER));
     }
 
     @Test
@@ -141,15 +152,16 @@ class PaymentServiceTests {
         when(paymentRepository.findById(7L)).thenReturn(Optional.of(payment));
         when(paymentRepository.save(any(Payment.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        assertEquals(PaymentStatus.SUCCESS, paymentService.updateStatus(7L, PaymentStatus.SUCCESS).status());
+        assertEquals(PaymentStatus.SUCCESS, paymentService.updateStatus(7L, PaymentStatus.SUCCESS, ADMIN).status());
         verify(receiptRepository).save(any(Receipt.class));
-        assertEquals(PaymentStatus.REFUNDED, paymentService.updateStatus(7L, PaymentStatus.REFUNDED).status());
+        assertEquals(PaymentStatus.REFUNDED,
+                paymentService.updateStatus(7L, PaymentStatus.REFUNDED, ADMIN).status());
         assertThrows(InvalidPaymentException.class,
-                () -> paymentService.updateStatus(7L, PaymentStatus.SUCCESS));
+                () -> paymentService.updateStatus(7L, PaymentStatus.SUCCESS, ADMIN));
     }
 
     private Payment payment(PaymentStatus status) {
-        Payment payment = new Payment(1L, new BigDecimal("12.00"),
+        Payment payment = new Payment(1L, 11L, new BigDecimal("12.00"),
                 PaymentMethod.CARD, status, "reference-1");
         ReflectionTestUtils.setField(payment, "id", 7L);
         return payment;

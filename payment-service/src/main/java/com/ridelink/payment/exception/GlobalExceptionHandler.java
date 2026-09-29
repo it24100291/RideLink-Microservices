@@ -7,6 +7,8 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.server.ResponseStatusException;
+import org.springframework.dao.DataIntegrityViolationException;
 
 import java.time.Instant;
 import java.util.Map;
@@ -23,6 +25,18 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(InvalidPaymentException.class)
     ResponseEntity<ApiError> handleInvalidPayment(InvalidPaymentException exception) {
         return response(HttpStatus.CONFLICT, exception.getMessage(), Map.of());
+    }
+
+    @ExceptionHandler(ResponseStatusException.class)
+    ResponseEntity<ApiError> handleResponseStatus(ResponseStatusException exception) {
+        HttpStatus status = HttpStatus.valueOf(exception.getStatusCode().value());
+        String message = exception.getReason() == null ? status.getReasonPhrase() : exception.getReason();
+        return response(status, message, Map.of());
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    ResponseEntity<ApiError> handleDataConflict(DataIntegrityViolationException exception) {
+        return response(HttpStatus.CONFLICT, "A conflicting payment already exists", Map.of());
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

@@ -22,8 +22,11 @@ public class Payment {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
+    @Column(nullable = false, unique = true)
     private Long rideId;
+
+    @Column(nullable = false)
+    private Long passengerAccountId;
 
     @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal amount;
@@ -48,9 +51,10 @@ public class Payment {
     protected Payment() {
     }
 
-    public Payment(Long rideId, BigDecimal amount,
+    public Payment(Long rideId, Long passengerAccountId, BigDecimal amount,
                    PaymentMethod paymentMethod, PaymentStatus status, String referenceId) {
         this.rideId = rideId;
+        this.passengerAccountId = passengerAccountId;
         this.amount = amount;
         this.paymentMethod = paymentMethod;
         this.status = status;
@@ -71,6 +75,7 @@ public class Payment {
 
     public Long getId() { return id; }
     public Long getRideId() { return rideId; }
+    public Long getPassengerAccountId() { return passengerAccountId; }
     public BigDecimal getAmount() { return amount; }
     public PaymentMethod getPaymentMethod() { return paymentMethod; }
     public PaymentStatus getStatus() { return status; }
