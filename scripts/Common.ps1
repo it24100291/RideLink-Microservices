@@ -14,7 +14,11 @@ function Initialize-LocalConfig {
 }
 function Build-Services([string]$Service) {
     $pom = if ($Service) { Join-Path $script:RepoRoot "$($script:Modules[$Service])/pom.xml" } else { Join-Path $script:RepoRoot 'pom.xml' }
-    & mvn -f $pom verify
+    $wrapper = Join-Path $script:RepoRoot 'mvnw.cmd'
+    if (!(Test-Path -LiteralPath $wrapper -PathType Leaf)) {
+        throw "Maven Wrapper not found: $wrapper"
+    }
+    & $wrapper -f $pom verify
     if ($LASTEXITCODE -ne 0) { throw 'Build or tests failed; services were not started.' }
 }
 function Assert-FreePort([int]$Port) {
