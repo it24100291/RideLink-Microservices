@@ -1,6 +1,6 @@
 # Ride to Payment integration
 
-Ride and Payment remain separate Spring Boot applications with separate databases. Ride calls Payment over HTTP using `payment.service.base-url` (default `http://localhost:8084`, override with `PAYMENT_SERVICE_URL`). Ride never reads Payment tables or repositories.
+Ride and Payment remain separate Spring Boot applications with separate databases. Ride calls Payment over HTTP using `payment.service.base-url` (default `http://localhost:8084`, override with `PAYMENT_SERVICE_URL`). Ride never reads Payment tables or repositories. All `/api/payments/**` and `/api/fares/**` routes require the shared `PAYMENT_SERVICE_KEY` in the `X-Service-Key` header. The local startup scripts generate this credential outside the repository and configure it for both services.
 
 ## Flow
 
@@ -16,7 +16,7 @@ Payment retains its standalone fare estimate at `POST /api/fares/calculate`. Cre
 
 Ride completion is persisted before payment is attempted and is not rolled back if Payment later becomes unavailable. A Payment outage returns HTTP 503 from the Ride payment endpoint. After an uncertain timeout, check `GET /api/rides/{rideId}/payment` before retrying. Payment enforces one payment record per ride with a database unique constraint; repeated creation returns HTTP 409. Invalid fare/status bodies return HTTP 400; unknown rides or payment records return HTTP 404. Invalid payment state transitions return HTTP 409. A receipt is created only after Payment accepts a transition to `SUCCESS`.
 
-Ride's payment routes use the existing Account-issued bearer-token authentication and ride ownership checks. Payment's direct API remains unauthenticated and is a security task for later review. Payment results are simulated; no external payment provider is used.
+Ride's payment routes use the existing Account-issued bearer-token authentication and ride ownership checks. Ride adds the internal `X-Service-Key` credential on its calls to Payment. Direct Payment API callers must also provide `X-Service-Key`; missing or invalid keys receive HTTP 401, and a Payment service with no configured key fails closed with HTTP 503. Fare estimates require the same service key. Payment results are simulated; no external payment provider is used.
 
 ## Starting services
 

@@ -61,6 +61,18 @@ Assert-Equal $completed.status 'COMPLETED' 'Ride completion'
 Assert-Equal $completed.releasePending $false 'Driver released'
 $driver = Api GET "$driverUrl/api/drivers/me" $null $driverToken
 Assert-Equal $driver.available $true 'Driver available again'
+Expect-Status 401 { Api POST "$rideUrl/api/rides/$($ride.id)/payment" @{distanceKm=10;durationMinutes=20;paymentMethod='CARD'} }
+Expect-Status 403 { Api POST "$rideUrl/api/rides/$($ride.id)/payment" @{distanceKm=10;durationMinutes=20;paymentMethod='CARD'} $otherToken }
+$payment = Api POST "$rideUrl/api/rides/$($ride.id)/payment" @{distanceKm=10;durationMinutes=20;paymentMethod='CARD'} $passengerToken
+Assert-Equal $payment.rideId $ride.id 'Payment ride link'
+Assert-Equal $payment.amount 22.00 'Simulated fare'
+Assert-Equal $payment.status 'PENDING' 'Payment initial status'
+$payment = Api GET "$rideUrl/api/rides/$($ride.id)/payment" $null $passengerToken
+Assert-Equal $payment.rideId $ride.id 'Payment retrieval'
+$payment = Api PUT "$rideUrl/api/rides/$($ride.id)/payment/status" @{status='SUCCESS'} $passengerToken
+Assert-Equal $payment.status 'SUCCESS' 'Simulated payment result'
+$receipt = Api GET "$rideUrl/api/rides/$($ride.id)/payment/receipt" $null $passengerToken
+Assert-Equal $receipt.rideId $ride.id 'Payment receipt'
 $second = Api POST "$rideUrl/api/rides" @{pickup='Fort';destination='Airport'} $passengerToken ([guid]::NewGuid().ToString())
 $cancelled = Api PATCH "$rideUrl/api/rides/$($second.id)/cancel" $null $passengerToken
 Assert-Equal $cancelled.status 'CANCELLED' 'Cancellation'
@@ -68,5 +80,5 @@ $null = Api PATCH "$accountUrl/api/accounts/me/password" @{currentPassword=$pass
 Expect-Status 401 { Api GET "$rideUrl/api/rides" $null $passengerToken }
 $passengerToken = (Api POST "$accountUrl/api/auth/login" @{email=$passengerEmail;password='WorkflowChanged456!'}).accessToken
 $null = Api GET "$rideUrl/api/rides/$($ride.id)" $null $passengerToken
-Write-Host 'PASS: registration, login, identity links, vehicle, booking, retry, ownership, reservation, completion, cancellation, and cross-service token revocation.'
+Write-Host 'PASS: registration, login, identity links, vehicle, booking, retry, ownership, reservation, completion, Ride-to-Payment HTTP integration, payment authorization, cancellation, and cross-service token revocation.'
 Write-Host "Completed ride ID: $($ride.id). Test accounts use suffix $suffix."

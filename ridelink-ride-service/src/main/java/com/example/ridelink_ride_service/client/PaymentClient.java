@@ -18,8 +18,11 @@ import java.util.List;
 @Component
 public class PaymentClient implements PaymentGateway {
     private final RestClient client;
+    private final String serviceKey;
 
-    public PaymentClient(@Value("${payment.service.base-url:http://localhost:8084}") String url) {
+    public PaymentClient(@Value("${payment.service.base-url:http://localhost:8084}") String url,
+                         @Value("${payment.service.key:}") String serviceKey) {
+        this.serviceKey = serviceKey;
         var factory = new JdkClientHttpRequestFactory(
                 HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(2)).build());
         factory.setReadTimeout(Duration.ofSeconds(3));
@@ -29,7 +32,7 @@ public class PaymentClient implements PaymentGateway {
     @Override
     public Payment create(Long rideId, BigDecimal distanceKm, Integer durationMinutes, PaymentMethod method) {
         try {
-            Payment payment = client.post().uri("/api/payments")
+            Payment payment = client.post().uri("/api/payments").header("X-Service-Key", serviceKey)
                     .body(new CreatePaymentRequest(rideId, distanceKm, durationMinutes, method))
                     .retrieve().body(Payment.class);
             if (payment == null || !rideId.equals(payment.rideId())) throw unavailable();
@@ -45,6 +48,7 @@ public class PaymentClient implements PaymentGateway {
     public Payment get(Long rideId) {
         try {
             List<Payment> payments = client.get().uri("/api/payments/ride/{rideId}", rideId)
+                    .header("X-Service-Key", serviceKey)
                     .retrieve().body(new ParameterizedTypeReference<>() { });
             if (payments == null || payments.isEmpty())
                 throw new ResponseStatusException(HttpStatus.NOT_FOUND, "No payment found for ride " + rideId);
@@ -62,6 +66,7 @@ public class PaymentClient implements PaymentGateway {
         Payment payment = get(rideId);
         try {
             Payment updated = client.put().uri("/api/payments/{id}/status", payment.id())
+                    .header("X-Service-Key", serviceKey)
                     .body(new StatusRequest(status)).retrieve().body(Payment.class);
             if (updated == null || !rideId.equals(updated.rideId())) throw unavailable();
             return updated;
@@ -77,6 +82,7 @@ public class PaymentClient implements PaymentGateway {
         Payment payment = get(rideId);
         try {
             Receipt receipt = client.get().uri("/api/payments/{id}/receipt", payment.id())
+                    .header("X-Service-Key", serviceKey)
                     .retrieve().body(Receipt.class);
             if (receipt == null || !rideId.equals(receipt.rideId())) throw unavailable();
             return receipt;

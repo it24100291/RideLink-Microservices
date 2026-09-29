@@ -35,6 +35,7 @@ function Set-ServiceEnvironment([string]$Service) {
     $values = @{
         ACCOUNT_SERVICE_KEY = [IO.File]::ReadAllText((Join-Path $script:LocalHome 'account-service.key')).Trim()
         RIDE_SERVICE_KEY = [IO.File]::ReadAllText((Join-Path $script:LocalHome 'ride-service.key')).Trim()
+        PAYMENT_SERVICE_KEY = [IO.File]::ReadAllText((Join-Path $script:LocalHome 'payment-service.key')).Trim()
         ACCOUNT_SERVICE_URL = "http://127.0.0.1:$($script:Ports.Account)"
         DRIVER_SERVICE_URL = "http://127.0.0.1:$($script:Ports.Driver)"
         PAYMENT_SERVICE_URL = "http://127.0.0.1:$($script:Ports.Payment)"
