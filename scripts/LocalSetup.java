@@ -16,7 +16,7 @@ class LocalSetup {
             Files.writeString(privateKey,pem("PRIVATE KEY",pair.getPrivate().getEncoded()),StandardOpenOption.CREATE_NEW);
             Files.writeString(publicKey,pem("PUBLIC KEY",pair.getPublic().getEncoded()),StandardOpenOption.CREATE_NEW);
         }
-        for(String name:new String[]{"account-service.key","ride-service.key"}){
+        for(String name:new String[]{"account-service.key","ride-service.key","payment-service.key"}){
             Path path=home.resolve(name);
             if(!Files.exists(path)){
                 byte[] bytes=new byte[32]; new SecureRandom().nextBytes(bytes);

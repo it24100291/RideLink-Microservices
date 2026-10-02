@@ -1,5 +1,5 @@
 param(
-    [Parameter(Mandatory=$true)][ValidateSet('Account','Driver','Ride')][string]$Service,
+    [Parameter(Mandatory=$true)][ValidateSet('Account','Driver','Ride','Payment')][string]$Service,
     [ValidateSet('Connected','Standalone')][string]$Mode = 'Connected',
     [switch]$NoBuild
 )

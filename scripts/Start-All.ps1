@@ -1,13 +1,13 @@
 param([switch]$NoBuild)
 . "$PSScriptRoot/Common.ps1"
-foreach ($service in @('Account','Driver','Ride')) { Assert-FreePort $script:Ports[$service] }
+foreach ($service in @('Account','Driver','Payment','Ride')) { Assert-FreePort $script:Ports[$service] }
 if (!$NoBuild) { Build-Services }
 Initialize-LocalConfig
 $statePath = Join-Path $script:LocalHome 'running.json'
 if (Test-Path -LiteralPath $statePath) { throw 'A startup record already exists. Run Stop-All.ps1 before starting again.' }
 $started = @()
 try {
-    foreach ($service in @('Account','Driver','Ride')) {
+    foreach ($service in @('Account','Driver','Payment','Ride')) {
         $saved = Set-ServiceEnvironment $service
         try {
             $arguments = Get-ServiceArguments $service 'Connected'

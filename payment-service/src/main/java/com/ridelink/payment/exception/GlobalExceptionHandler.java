@@ -1,12 +1,14 @@
 package com.ridelink.payment.exception;
 
 import jakarta.validation.ConstraintViolationException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
 import java.util.Map;
@@ -14,6 +16,12 @@ import java.util.stream.Collectors;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    @ExceptionHandler(ResponseStatusException.class)
+    ResponseEntity<ApiError> handleResponseStatus(ResponseStatusException exception) {
+        HttpStatus status = HttpStatus.valueOf(exception.getStatusCode().value());
+        return response(status, exception.getReason() == null ? status.getReasonPhrase() : exception.getReason(), Map.of());
+    }
 
     @ExceptionHandler(PaymentNotFoundException.class)
     ResponseEntity<ApiError> handleNotFound(PaymentNotFoundException exception) {
@@ -23,6 +31,11 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(InvalidPaymentException.class)
     ResponseEntity<ApiError> handleInvalidPayment(InvalidPaymentException exception) {
         return response(HttpStatus.CONFLICT, exception.getMessage(), Map.of());
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    ResponseEntity<ApiError> handleDuplicate(DataIntegrityViolationException exception) {
+        return response(HttpStatus.CONFLICT, "A payment already exists for this ride", Map.of());
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
